@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>销售地区作战图</title>
+<link rel="stylesheet" href="vendor/leaflet.min.css">
+<script src="vendor/leaflet.min.js"></script>
+<script src="vendor/leaflet-heat.js"></script>
+<script src="vendor/echarts.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b30; --panel2: #182342; --border: #22304f;
+    --text: #e7edf8; --muted: #8fa0bd; --accent: #38bdf8; --accent2: #22d3ee;
+    --green: #34d399; --orange: #fbbf24; --red: #f87171; --blue: #60a5fa; --gray: #94a3b8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  header {
+    display: flex; align-items: center; gap: 24px; padding: 12px 20px;
+    background: linear-gradient(90deg, #0e1730, #0b1220 60%);
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: #04263a; font-weight: 800; box-shadow: 0 0 18px #22d3ee55;
+  }
+  .brand h1 { font-size: 19px; font-weight: 700; letter-spacing: 1px; }
+  .brand .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .mode-badge {
+    display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px;
+    background: #164e6355; color: #67e8f9; border: 1px solid #22d3ee55; font-size: 11px;
+  }
+  .mode-badge.off { background: #7c2d1255; color: #fdba74; border-color: #fdba7455; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+  .stat { min-width: 78px; padding: 7px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; text-align: center; }
+  .stat .num { font-size: 20px; font-weight: 800; line-height: 1.2; }
+  .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat.c-total .num { color: var(--accent); }
+  .stat.c-talk .num { color: var(--blue); }
+  .stat.c-wait .num { color: var(--gray); }
+  .stat.c-key .num { color: var(--red); }
+  .stat.c-reg .num { color: var(--green); }
+  .stat.c-a .num { color: var(--orange); }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  aside { width: 360px; min-width: 310px; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: #0d1526; }
+  .filter-panel { padding: 12px; border-bottom: 1px solid var(--border); }
+  input, select {
+    width: 100%; padding: 8px 10px; margin-bottom: 8px;
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 13px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  .select-row { display: flex; gap: 8px; }
+  .select-row select, .select-row > div { flex: 1; }
+  .filter-actions { display: flex; gap: 8px; margin-top: 2px; }
+  button {
+    cursor: pointer; border-radius: 8px; font-size: 13px; padding: 8px 12px;
+    color: var(--text); background: var(--panel2); border: 1px solid var(--border);
+    transition: filter .15s;
+  }
+  button:hover { filter: brightness(1.25); }
+  button.primary { flex: 1; background: linear-gradient(135deg, #0284c7, #0ea5e9); border: none; font-weight: 700; color: #fff; }
+  button.ghost { background: transparent; }
+  button.mine { width: 100%; margin-top: 8px; background: linear-gradient(135deg, #0e7490, #22d3ee); border: none; font-weight: 700; color: #fff; }
+  button.export { width: 100%; margin-top: 8px; background: linear-gradient(135deg, #047857, #34d399); border: none; font-weight: 700; color: #fff; }
+  button.mini { padding: 3px 8px; font-size: 11px; flex-shrink: 0; }
+
+  .list { flex: 1; overflow-y: auto; padding: 10px; }
+  .list::-webkit-scrollbar { width: 8px; }
+  .list::-webkit-scrollbar-thumb { background: #26345a; border-radius: 4px; }
+  .empty-tip { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 10px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: border-color .15s, transform .15s; }
+  .card:hover { border-color: var(--accent); transform: translateX(2px); }
+  .card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .card .row1 { display: flex; align-items: center; gap: 8px; }
+  .card .name { font-size: 14px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #1c2947; color: var(--muted); border: 1px solid var(--border); }
+  .tag.st { color: #fff; border: none; }
+  .tag.key { color: #fca5a5; border-color: #f8717188; background: #7f1d1d55; }
+  .tag.lvl-A { color: #fcd34d; border-color: #fbbf2488; background: #78350f55; }
+  .tag.lvl-B { color: #93c5fd; border-color: #60a5fa88; background: #1e3a8a55; }
+  .tag.src { color: #67e8f9; border-color: #0e749088; background: #08334455; }
+  .card .addr { font-size: 12px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+  .card .addr b { color: #c7d3ea; font-weight: 600; }
+  .card .dyn { font-size: 11px; color: #7dd3fc; margin-top: 5px; line-height: 1.5; }
+
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #map { flex: 1; min-height: 320px; background: #0a0f1c; }
+  .leaflet-container { font: inherit; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #121b30; color: var(--text); border: 1px solid var(--border); }
+  .leaflet-popup-content { margin: 12px 14px; font-size: 13px; line-height: 1.7; }
+  .pp-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .pp-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+  .pp-line { color: var(--muted); }
+  .pp-line b { color: #c7d3ea; font-weight: 600; }
+  .copy-coord { margin-top: 6px; }
+
+  .mk-wrap { background: transparent; border: none; }
+  .mk { border-radius: 50%; border: 2px solid #0b1220; }
+  .rno {
+    width: 22px; height: 22px; border-radius: 50%; background: #fb923c; color: #431407;
+    font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center;
+    border: 2px solid #0b1220; box-shadow: 0 0 8px #fb923c88;
+  }
+  .map-panel {
+    background: #121b30ee; border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 12px; color: var(--text);
+    display: flex; flex-direction: column; gap: 7px; min-width: 138px;
+  }
+  .map-panel .mp-title { font-weight: 700; color: var(--accent2); font-size: 12px; }
+  .map-panel label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .map-panel input[type=checkbox] { width: auto; margin: 0; accent-color: var(--accent2); }
+  .map-panel .mp-btns { display: flex; gap: 6px; }
+  .map-panel button { padding: 5px 8px; font-size: 12px; flex: 1; }
+
+  .charts { display: flex; gap: 10px; padding: 10px; border-top: 1px solid var(--border); background: #0d1526; }
+  .chart-panel { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .chart-panel h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .chart-box { width: 100%; height: 190px; }
+
+  .modal-mask { position: fixed; inset: 0; background: #000000aa; z-index: 2000; display: none; align-items: center; justify-content: center; }
+  .modal-mask.show { display: flex; }
+  .modal { width: 560px; max-width: 94vw; max-height: 90vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .modal h2 { font-size: 16px; margin-bottom: 14px; }
+  .modal label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  .modal label .req { color: var(--red); }
+  .modal .coord-row { display: flex; gap: 8px; align-items: center; }
+  .modal .coord-row input { margin-bottom: 0; }
+  .modal .coord-row button { white-space: nowrap; flex-shrink: 0; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions button { flex: 1; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+  .ana-level { font-size: 22px; font-weight: 800; margin: 6px 0; }
+  .ana-sec { font-size: 13px; font-weight: 700; margin: 12px 0 6px; color: var(--accent2); }
+  .ana-item { font-size: 13px; color: var(--text); line-height: 1.8; padding-left: 14px; position: relative; }
+  .ana-item::before { content: '•'; position: absolute; left: 2px; color: var(--accent2); }
+  .ana-item.risk::before { color: var(--red); }
+
+  #pickHint { display: none; position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 1500; padding: 10px 22px; border-radius: 30px; background: #0ea5e9; color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 4px 20px #0ea5e966; }
+  #authMask { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; }
+  .auth-box { width: 380px; max-width: 92vw; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 26px; }
+  .auth-box h2 { text-align: center; font-size: 18px; margin-top: 10px; }
+  .auth-link { color: var(--accent2); cursor: pointer; text-decoration: underline; }
+  .urole { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #164e6355; color: #67e8f9; border: 1px solid #22d3ee55; }
+  .urole.admin { background: #78350f55; color: #fcd34d; border-color: #fbbf2488; }
+  .urow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .urow .uname { flex: 1; font-weight: 600; }
+  #toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 3000; padding: 10px 22px; border-radius: 10px; background: #14532d; border: 1px solid #22c55e; color: #bbf7d0; font-size: 13px; display: none; box-shadow: 0 4px 16px #00000066; max-width: 84vw; text-align: center; }
+  #toast.warn { background: #7c2d12; border-color: #f97316; color: #fed7aa; }
+
+  @media (max-width: 1000px) {
+    body { overflow: auto; }
+    main { flex-direction: column; }
+    aside { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .list { max-height: 300px; }
+    #map { min-height: 380px; }
+    .charts { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录 / 注册 -->
+<div id="authMask">
+  <div class="auth-box">
+    <div class="logo" style="margin:0 auto;width:52px;height:52px;font-size:26px">战</div>
+    <h2>销售地区作战图</h2>
+    <p class="hint" style="text-align:center;margin:4px 0 14px">湖北全域 · 51赛道 · 足迹点亮</p>
+    <div id="loginForm">
+      <label>用户名</label>
+      <input id="lgUser" type="text" autocomplete="username" placeholder="请输入用户名">
+      <label>密码</label>
+      <input id="lgPass" type="password" autocomplete="current-password" placeholder="请输入密码">
+      <div class="modal-actions"><button id="lgBtn" class="primary" type="button">登 录</button></div>
+      <p class="hint" style="text-align:center">没有账号？<span class="auth-link" id="toReg">立即注册</span></p>
+    </div>
+    <div id="regForm" style="display:none">
+      <label>用户名</label>
+      <input id="rgUser" type="text" placeholder="至少 2 个字符">
+      <label>密码</label>
+      <input id="rgPass" type="password" placeholder="至少 6 位">
+      <label>确认密码</label>
+      <input id="rgPass2" type="password" placeholder="再次输入密码">
+      <div class="modal-actions"><button id="rgBtn" class="primary" type="button">注册并登录</button></div>
+      <p class="hint" style="text-align:center">已有账号？<span class="auth-link" id="toLg">去登录</span></p>
+    </div>
+    <p class="hint" id="authHint" style="text-align:center"></p>
+  </div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="logo">战</div>
+    <div>
+      <h1>销售地区作战图</h1>
+      <p class="sub"><span id="subTitle">加载中…</span><span id="modeBadge"></span></p>
+    </div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div id="userBox" style="display:flex;align-items:center;gap:8px"></div>
+</header>
+
+<main>
+  <aside>
+    <div class="filter-panel">
+      <input id="q" type="text" placeholder="搜索客户名称 / 地址 / 法人 / 动态…">
+      <div class="select-row">
+        <select id="fRegion"></select>
+        <select id="fDistrict"></select>
+      </div>
+      <div class="select-row">
+        <select id="fIndustry"></select>
+        <select id="fContacted"></select>
+      </div>
+      <div class="select-row">
+        <select id="fKey"></select>
+      </div>
+      <div class="filter-actions">
+        <button id="clearBtn" class="ghost">清除筛选</button>
+        <button id="addBtn" class="primary">＋ 添加客户</button>
+      </div>
+      <button id="mineBtn" class="mine" type="button" title="按当前 区域×赛道 双维度从探迹开放平台挖掘线索">⛏ 探迹线索挖掘 · 区域×赛道</button>
+      <button id="exportBtn" class="export" type="button">⇩ 导出 Excel（按表单字段筛选）</button>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <section class="content">
+    <div id="map"></div>
+    <div class="charts">
+      <div class="chart-panel"><h3>建联情况分布</h3><div id="chartStatus" class="chart-box"></div></div>
+      <div class="chart-panel"><h3>赛道分布</h3><div id="chartIndustry" class="chart-box"></div></div>
+      <div class="chart-panel"><h3>区域战况（按建联）</h3><div id="chartRegion" class="chart-box"></div></div>
+    </div>
+  </section>
+</main>
+
+<div id="pickHint">在地图上点击选择客户位置 · 按 ESC 取消</div>
+<div id="toast"></div>
+
+<!-- 添加客户 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h2>添加客户</h2>
+    <label>客户名称 <span class="req">*</span></label>
+    <div class="coord-row">
+      <input id="mName" type="text" placeholder="输入公司全称后点右侧自动回填">
+      <button id="enrichBtn" type="button" title="调用探迹/天眼查/爱企查自动回填"> 自动回填</button>
+    </div>
+    <div class="select-row">
+      <div><label>地市</label><select id="mRegion"></select></div>
+      <div><label>区县</label><select id="mDistrict"></select></div>
+    </div>
+    <div class="select-row">
+      <div><label>赛道标签</label><input id="mIndustry" type="text" list="dlIndustry" placeholder="选择或输入赛道"></div>
+      <div><label>是否重点</label><select id="mKey"><option>否</option><option>是</option></select></div>
+    </div>
+    <datalist id="dlIndustry"></datalist>
+    <label>公司网站</label>
+    <input id="mWebsite" type="text" placeholder="https://">
+    <label>公司地址 <span class="req">*</span></label>
+    <input id="mAddress" type="text" placeholder="街道门牌号，用于上门拜访">
+    <div class="select-row">
+      <div><label>法人/联系人 <span class="req">*</span></label><input id="mContact" type="text" placeholder="如：王总"></div>
+      <div><label>法人电话</label><input id="mPhone" type="text" placeholder="座机或手机"></div>
+    </div>
+    <label>其他关键人联系方式</label>
+    <input id="mOtherContacts" type="text" placeholder="如：技术总监 刘工 138xxxx">
+    <div class="select-row">
+      <div><label>建联情况</label><select id="mContacted"><option>未建联</option><option>已建联</option></select></div>
+      <div><label>是否注册账号</label><select id="mRegistered"><option>否</option><option>是</option></select></div>
+    </div>
+    <div class="select-row">
+      <div><label>公司PC人数</label><input id="mPcCount" type="number" min="0" placeholder="0"></div>
+      <div><label>研发人数</label><input id="mRdCount" type="number" min="0" placeholder="0"></div>
+    </div>
+    <div class="select-row">
+      <div><label>接入方式</label><input id="mAccessMode" type="text" list="dlAccess" placeholder="API/SDK/私有化…"></div>
+      <div><label>月消费（万）</label><input id="mMonthlySpend" type="number" min="0" step="0.1" placeholder="0"></div>
+    </div>
+    <datalist id="dlAccess"></datalist>
+    <div class="select-row">
+      <div><label>模型种类</label><input id="mModels" type="text" placeholder="如：通义/DeepSeek"></div>
+      <div><label>使用工具</label><input id="mTools" type="text" placeholder="如：Cursor/Dify"></div>
+    </div>
+    <label>经纬度（地图布点用，可地图选点）</label>
+    <div class="coord-row">
+      <input id="mLat" type="text" placeholder="纬度">
+      <input id="mLng" type="text" placeholder="经度">
+      <button id="pickBtn" type="button">地图选点</button>
+    </div>
+    <div class="modal-actions">
+      <button id="saveBtn" class="primary" type="button">保存客户</button>
+      <button id="cancelBtn" class="ghost" type="button">取消</button>
+    </div>
+    <p class="hint">带 <span class="req">*</span> 为必填。"自动回填"由后端中转调用探迹/天眼查/爱企查补全；未连接中转时为模拟回填并明确标注。</p>
+  </div>
+</div>
+
+<!-- 价值分析 -->
+<div class="modal-mask" id="anaMask">
+  <div class="modal">
+    <h2 id="anaName">客户价值分析</h2>
+    <div class="ana-level" id="anaLevel"></div>
+    <div class="ana-sec">业务机会</div>
+    <div id="anaOpp"></div>
+    <div class="ana-sec" style="color:var(--red)">潜在风险</div>
+    <div id="anaRisk"></div>
+    <div class="modal-actions"><button id="anaClose" type="button">关闭</button></div>
+  </div>
+</div>
+
+<!-- 导出 Excel -->
+<div class="modal-mask" id="expMask">
+  <div class="modal">
+    <h2>导出 Excel</h2>
+    <p class="hint" style="margin-top:0">在当前筛选结果上，再按以下表单字段过滤后导出：</p>
+    <div class="select-row">
+      <div><label>赛道标签</label><select id="eIndustry"></select></div>
+      <div><label>建联情况</label><select id="eContacted"></select></div>
+    </div>
+    <div class="select-row">
+      <div><label>是否重点</label><select id="eKey"></select></div>
+      <div><label>是否注册账号</label><select id="eRegistered"></select></div>
+    </div>
+    <div class="modal-actions">
+      <button id="expGo" class="primary" type="button">导出 .xlsx</button>
+      <button id="expClose" class="ghost" type="button">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 用户管理（管理员） -->
+<div class="modal-mask" id="userMask">
+  <div class="modal">
+    <h2>用户管理</h2>
+    <p class="hint" style="margin-top:0">管理员可设置角色或删除用户（不能操作自己）。</p>
+    <div id="userList"></div>
+    <div class="modal-actions"><button id="userClose" type="button">关闭</button></div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var DATA = window.BATTLE_DATA || { title: '', regions: [], industries: [], customers: [] };
+  var CFG = DATA.config || {};
+  var API = CFG.relayUrl || '';
+  var ONLINE = false;
+
+  // ---------- 登录 / 注册 / 权限 ----------
+  var AUTH = { user: null, token: '' };
+  try { AUTH.token = localStorage.getItem('sbm_token') || ''; } catch (e) {}
+  function isAdmin() { return !!(AUTH.user && AUTH.user.role === 'admin'); }
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    if (AUTH.token) opts.headers.Authorization = 'Bearer ' + AUTH.token;
+    return fetch(API + path, opts);
+  }
+  // 演示模式（无后端）本地账户
+  function dUsers() { try { return JSON.parse(localStorage.getItem('sbm_users') || '[]'); } catch (e) { return []; } }
+  function dSave(u) { localStorage.setItem('sbm_users', JSON.stringify(u)); }
+  function sha256(s) {
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function (b) {
+      return Array.from(new Uint8Array(b)).map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
+    });
+  }
+  function demoSeed() {
+    var u = dUsers();
+    if (!u.length) {
+      return sha256('s1admin123').then(function (h) {
+        u.push({ username: 'admin', salt: 's1', hash: h, role: 'admin' });
+        dSave(u);
+      });
+    }
+    return Promise.resolve();
+  }
+  function demoLogin(name, pass) {
+    return demoSeed().then(function () {
+      var u = dUsers(); var x = null;
+      u.forEach(function (v) { if (v.username === name) x = v; });
+      if (!x) throw '用户名不存在';
+      return sha256(x.salt + pass).then(function (h) {
+        if (h !== x.hash) throw '密码错误';
+        AUTH.user = { username: x.username, role: x.role };
+        AUTH.token = 'demo'; localStorage.setItem('sbm_token', 'demo');
+      });
+    });
+  }
+  function demoRegister(name, pass) {
+    return demoSeed().then(function () {
+      var u = dUsers();
+      var dup = false; u.forEach(function (v) { if (v.username === name) dup = true; });
+      if (dup) throw '用户名已存在';
+      var role = u.length ? 'user' : 'admin';
+      var salt = 's' + Date.now();
+      return sha256(salt + pass).then(function (h) {
+        u.push({ username: name, salt: salt, hash: h, role: role });
+        dSave(u);
+        AUTH.user = { username: name, role: role };
+        AUTH.token = 'demo'; localStorage.setItem('sbm_token', 'demo');
+      });
+    });
+  }
+  function demoUsersOp(op, arg) {
+    var u = dUsers();
+    if (op === 'list') return Promise.resolve(u.map(function (v) { return { username: v.username, role: v.role }; }));
+    if (op === 'role') { u.forEach(function (v) { if (v.username === arg.username) v.role = arg.role; }); dSave(u); }
+    if (op === 'del') { dSave(u.filter(function (v) { return v.username !== arg; })); }
+    return Promise.resolve();
+  }
+  function authLogin(name, pass) {
+    if (ONLINE) {
+      return api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: name, password: pass }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw (j.error || '登录失败'); AUTH.user = j.user; AUTH.token = j.token; localStorage.setItem('sbm_token', j.token); }); });
+    }
+    return demoLogin(name, pass);
+  }
+  function authRegister(name, pass) {
+    if (ONLINE) {
+      return api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username: name, password: pass }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw (j.error || '注册失败'); AUTH.user = j.user; AUTH.token = j.token; localStorage.setItem('sbm_token', j.token); }); });
+    }
+    return demoRegister(name, pass);
+  }
+  function authMe() {
+    return api('/api/auth/me').then(function (r) {
+      if (!r.ok) return null;
+      return r.json().then(function (j) { return j.user || null; });
+    }).catch(function () { return null; });
+  }
+  function enterApp() {
+    document.getElementById('authMask').style.display = 'none';
+    renderUserBox();
+    applyPerms();
+    if (ONLINE) loadCustomers(); else { setModeBadge(false); render(); }
+  }
+  function showAuth(hint) {
+    document.getElementById('authMask').style.display = 'flex';
+    document.getElementById('authHint').textContent = hint || (ONLINE
+      ? '在线模式：首个注册用户自动成为管理员'
+      : '模拟模式演示账号：admin / admin123');
+  }
+  function authBoot() {
+    if (ONLINE && AUTH.token) {
+      authMe().then(function (u) {
+        if (u) { AUTH.user = u; enterApp(); } else showAuth();
+      });
+    } else if (!ONLINE && AUTH.token === 'demo') {
+      var u = dUsers(); var me = null;
+      u.forEach(function (v) { if (v.username === (localStorage.getItem('sbm_last') || '')) me = v; });
+      // 演示模式直接按最近登录用户恢复
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem('sbm_user') || 'null'); } catch (e) {}
+      if (stored) { AUTH.user = stored; enterApp(); } else showAuth();
+    } else showAuth();
+  }
+  function renderUserBox() {
+    var box = document.getElementById('userBox');
+    if (!AUTH.user) { box.innerHTML = ''; return; }
+    box.innerHTML =
+      '<span style="font-size:13px;font-weight:600">' + escapeHtml(AUTH.user.username) + '</span>' +
+      '<span class="urole' + (isAdmin() ? ' admin' : '') + '">' + (isAdmin() ? '管理员' : '普通用户') + '</span>' +
+      (isAdmin() ? '<button class="mini" id="umBtn" type="button">用户管理</button>' : '') +
+      '<button class="mini" id="logoutBtn" type="button">退出</button>';
+    var um = document.getElementById('umBtn');
+    if (um) um.addEventListener('click', openUserMgr);
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+      AUTH.user = null; AUTH.token = '';
+      localStorage.removeItem('sbm_token'); localStorage.removeItem('sbm_user');
+      showAuth('已退出登录');
+    });
+    try { localStorage.setItem('sbm_user', JSON.stringify(AUTH.user)); } catch (e) {}
+  }
+  function applyPerms() {
+    document.getElementById('mineBtn').style.display = isAdmin() ? '' : 'none';
+    document.getElementById('exportBtn').style.display = isAdmin() ? '' : 'none';
+  }
+  function openUserMgr() {
+    var load = ONLINE
+      ? api('/api/auth/users').then(function (r) { return r.json(); })
+      : demoUsersOp('list');
+    load.then(function (rows) {
+      var html = '';
+      (rows || []).forEach(function (u) {
+        var self = u.username === AUTH.user.username;
+        html += '<div class="urow"><span class="uname">' + escapeHtml(u.username) + '</span>' +
+          '<span class="urole' + (u.role === 'admin' ? ' admin' : '') + '">' + (u.role === 'admin' ? '管理员' : '普通用户') + '</span>' +
+          (self ? '<span class="hint" style="margin:0">本人</span>' :
+            '<button class="mini um-role" data-u="' + escapeHtml(u.username) + '" data-r="' + (u.role === 'admin' ? 'user' : 'admin') + '" type="button">' + (u.role === 'admin' ? '设为普通' : '设为管理员') + '</button>' +
+            '<button class="mini um-del" data-u="' + escapeHtml(u.username) + '" type="button">删除</button>') +
+          '</div>';
+      });
+      document.getElementById('userList').innerHTML = html || '<div class="empty-tip">暂无用户</div>';
+      document.querySelectorAll('.um-role').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var arg = { username: b.getAttribute('data-u'), role: b.getAttribute('data-r') };
+          var p = ONLINE ? api('/api/auth/role', { method: 'POST', body: JSON.stringify(arg) }) : Promise.resolve(demoUsersOp('role', arg));
+          p.then(function () { toast('已更新角色'); openUserMgr(); });
+        });
+      });
+      document.querySelectorAll('.um-del').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var name = b.getAttribute('data-u');
+          if (!confirm('确定删除用户 ' + name + ' ？')) return;
+          var p = ONLINE ? api('/api/auth/delete', { method: 'POST', body: JSON.stringify({ username: name }) }) : Promise.resolve(demoUsersOp('del', name));
+          p.then(function () { toast('已删除用户'); openUserMgr(); });
+        });
+      });
+      document.getElementById('userMask').classList.add('show');
+    });
+  }
+
+  var CONTACTED_LIST = ['未建联', '已建联'];
+  var STATUS_COLOR = { '未建联': '#94a3b8', '已建联': '#60a5fa' };
+  var CITY_CENTER = {
+    '武汉': [30.593, 114.305], '黄石': [30.200, 115.038], '十堰': [32.629, 110.787],
+    '宜昌': [30.692, 111.286], '襄阳': [32.009, 112.122], '鄂州': [30.391, 114.894],
+    '荆门': [31.035, 112.217], '孝感': [30.926, 113.916], '荆州': [30.335, 112.239],
+    '黄冈': [30.453, 114.872], '咸宁': [29.841, 114.322], '随州': [31.690, 113.382],
+    '恩施州': [30.272, 109.479], '仙桃': [30.362, 113.442], '潜江': [30.421, 112.896],
+    '天门': [30.663, 113.166], '神农架': [31.744, 110.675]
+  };
+  var FIELDS_META = [
+    ['name', '客户名称'], ['keyAccount', '是否重点'], ['industry', '赛道标签'], ['website', '公司网站'],
+    ['address', '公司地址'], ['contact', '法人/联系人'], ['phone', '法人电话'], ['otherContacts', '其他关键人联系方式'],
+    ['contacted', '建联情况'], ['pcCount', '公司PC人数'], ['rdCount', '研发人数'], ['accessMode', '接入方式'],
+    ['monthlySpend', '月消费（万）'], ['models', '模型种类'], ['tools', '使用工具'], ['registered', '是否注册账号'],
+    ['region', '地市'], ['district', '区县'], ['dynamics', '公司动态'], ['source', '线索来源']
+  ];
+
+  var filters = { q: '', region: '', district: '', industry: '', contacted: '', key: '' };
+  var currentList = [];
+  var markerLayer = null, markerByIndex = {}, activeIndex = -1, picking = false;
+  var showHeat = true, showTrack = true;
+  var heatLayer = null, trackLayer = null, routeLayer = null;
+
+  // ---------- 地图 ----------
+  var map = L.map('map', { zoomControl: true }).setView(DATA.mapCenter || [30.95, 112.35], DATA.mapZoom || 7);
+  var amap = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    subdomains: ['1', '2', '3', '4'], maxZoom: 19, attribution: '&copy; 高德地图'
+  });
+  var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
+  amap.addTo(map);
+  L.control.layers({ '高德地图': amap, 'OpenStreetMap': osm }, null, { position: 'topright' }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+  trackLayer = L.layerGroup().addTo(map);
+  routeLayer = L.layerGroup().addTo(map);
+
+  var panel = L.control({ position: 'topright' });
+  panel.onAdd = function () {
+    var div = L.DomUtil.create('div', 'map-panel');
+    div.innerHTML =
+      '<div class="mp-title">足迹作战台</div>' +
+      '<label><input type="checkbox" id="tgHeat" checked> 客户分布热力</label>' +
+      '<label><input type="checkbox" id="tgTrack" checked> 已建联足迹串联</label>' +
+      '<div class="mp-btns"><button id="routeBtn" type="button">生成拜访路线</button><button id="routeClearBtn" type="button">清除</button></div>';
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    return div;
+  };
+  panel.addTo(map);
+  setTimeout(function () {
+    var tg = document.getElementById('tgHeat');
+    if (!tg) return;
+    if (!window.L.heatLayer) { tg.disabled = true; tg.checked = false; showHeat = false; }
+    tg.addEventListener('change', function () { showHeat = this.checked; updateHeat(); });
+    document.getElementById('tgTrack').addEventListener('change', function () { showTrack = this.checked; updateTrack(); });
+    document.getElementById('routeBtn').addEventListener('click', buildRoute);
+    document.getElementById('routeClearBtn').addEventListener('click', function () { clearRoute(); toast('已清除拜访路线'); });
+  }, 0);
+
+  map.on('contextmenu', function (e) {
+    var lat = e.latlng.lat.toFixed(6), lng = e.latlng.lng.toFixed(6);
+    var popup = L.popup().setLatLng(e.latlng).setContent(
+      '<div style="font-size:13px">坐标：<b>' + lat + ', ' + lng + '</b><br><button class="copy-coord" type="button">复制坐标</button></div>'
+    ).openOn(map);
+    setTimeout(function () {
+      var el = popup.getElement(); if (!el) return;
+      var btn = el.querySelector('.copy-coord');
+      if (btn) btn.addEventListener('click', function () { copyText(lat + ', ' + lng); toast('坐标已复制：' + lat + ', ' + lng); });
+    }, 50);
+  });
+  map.on('click', function (e) {
+    if (!picking) return;
+    picking = false;
+    document.getElementById('pickHint').style.display = 'none';
+    document.getElementById('modalMask').classList.add('show');
+    document.getElementById('mLat').value = e.latlng.lat.toFixed(6);
+    document.getElementById('mLng').value = e.latlng.lng.toFixed(6);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && picking) {
+      picking = false;
+      document.getElementById('pickHint').style.display = 'none';
+      document.getElementById('modalMask').classList.add('show');
+    }
+  });
+
+  var chartStatus = echarts.init(document.getElementById('chartStatus'));
+  var chartIndustry = echarts.init(document.getElementById('chartIndustry'));
+  var chartRegion = echarts.init(document.getElementById('chartRegion'));
+  window.addEventListener('resize', function () { chartStatus.resize(); chartIndustry.resize(); chartRegion.resize(); });
+
+  // ---------- 工具 ----------
+  function toast(msg, warn) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.className = warn ? 'warn' : ''; t.style.display = 'block';
+    clearTimeout(t._timer); t._timer = setTimeout(function () { t.style.display = 'none'; }, 3200);
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(function () {});
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function hasCoord(c) { return typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng); }
+  function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function hash(s) { var h = 0; s = String(s || ''); for (var i = 0; i < s.length; i++) h = ((h * 31) + s.charCodeAt(i)) >>> 0; return h; }
+
+  // ---------- 客户价值分析 ----------
+  function analyze(c) {
+    var score = 0, opp = [], risk = [];
+    var ms = num(c.monthlySpend), rd = num(c.rdCount), pc = num(c.pcCount);
+    if (ms >= 10) score += 40; else if (ms >= 5) score += 30; else if (ms >= 1) score += 20; else if (ms > 0) score += 10;
+    if (rd >= 20) score += 25; else if (rd >= 10) score += 18; else if (rd >= 5) score += 12; else if (rd >= 1) score += 6;
+    if (pc >= 100) score += 10; else if (pc >= 50) score += 6; else if (pc >= 10) score += 3;
+    var mc = String(c.models || '').split(/[\/,，\s]+/).filter(Boolean).length;
+    score += Math.min(9, mc * 3);
+    if (c.registered === '是') score += 5;
+    if (c.keyAccount === '是') score += 10;
+    if (c.contacted === '已建联') score += 5;
+
+    if (ms > 0) opp.push('现有月消费约 ' + ms + ' 万，算力API承接/扩容空间明确');
+    if (rd >= 5) opp.push('研发团队 ' + rd + ' 人，AI Coding 与模型调用需求强');
+    if (c.accessMode === 'API' || c.accessMode === 'SDK') opp.push('偏好 ' + c.accessMode + ' 接入，与我方自研算力API产品形态匹配');
+    if (mc > 0) opp.push('已在用模型 [' + c.models + ']，可推多模型聚合与成本优化方案');
+    if (c.tools) opp.push('当前使用 ' + c.tools + '，存在迁移到我方生态的差异化窗口');
+    if (c.registered === '否') opp.push('尚未注册账号，可以免费额度/试用推动激活');
+    if (c.keyAccount === '是') opp.push('已标记重点客户，建议纳入深耕足迹计划，优先串联拜访');
+
+    if (c.contacted === '未建联') risk.push('未建联，需准备初次触达话术与决策人信息');
+    if (!c.phone) risk.push('缺法人电话，需经探迹/天眼查补全联系方式');
+    if (rd <= 0) risk.push('研发人数不明，接入能力待首访核实');
+    if (ms <= 0) risk.push('预算/消费不明，价值需建联后重新评估');
+    if (c.accessMode === '私有化部署') risk.push('倾向私有化部署，与公有云API模式需方案适配');
+    if (c.registered === '否' && c.contacted === '已建联') risk.push('已建联但未注册账号，跟进激活转化');
+
+    var level = score >= 70 ? 'A 高价值' : (score >= 40 ? 'B 中价值' : 'C 低价值');
+    if (!opp.length) opp.push('暂缺业务机会信号，建议先建联采集信息');
+    if (!risk.length) risk.push('暂无显著风险，保持正常跟进节奏');
+    return { score: score, level: level, opp: opp, risk: risk };
+  }
+  function levelTag(c) {
+    var a = analyze(c);
+    var cls = a.level.charAt(0) === 'A' ? 'lvl-A' : 'lvl-B';
+    return '<span class="tag ' + cls + '">' + a.level + '</span>';
+  }
+
+  // ---------- 筛选 ----------
+  function getFiltered() {
+    return DATA.customers.filter(function (c) {
+      if (filters.region && c.region !== filters.region) return false;
+      if (filters.district && c.district !== filters.district) return false;
+      if (filters.industry && c.industry !== filters.industry) return false;
+      if (filters.contacted && c.contacted !== filters.contacted) return false;
+      if (filters.key && c.keyAccount !== filters.key) return false;
+      if (filters.q) {
+        var hay = (c.name || '') + (c.address || '') + (c.contact || '') + (c.dynamics || '') + (c.tools || '') + (c.models || '');
+        if (hay.toLowerCase().indexOf(filters.q.toLowerCase()) < 0) return false;
+      }
+      return true;
+    });
+  }
+
+  function render() {
+    currentList = getFiltered();
+    renderStats(currentList);
+    renderMarkers(currentList);
+    renderList(currentList);
+    renderCharts(currentList);
+    updateHeat();
+    updateTrack();
+    clearRoute();
+  }
+
+  function renderStats(list) {
+    var s = { total: list.length, yes: 0, no: 0, key: 0, reg: 0, a: 0 };
+    list.forEach(function (c) {
+      if (c.contacted === '已建联') s.yes++; else s.no++;
+      if (c.keyAccount === '是') s.key++;
+      if (c.registered === '是') s.reg++;
+      if (analyze(c).level.charAt(0) === 'A') s.a++;
+    });
+    document.getElementById('stats').innerHTML =
+      '<div class="stat c-total"><div class="num">' + s.total + '</div><div class="lbl">总客户</div></div>' +
+      '<div class="stat c-talk"><div class="num">' + s.yes + '</div><div class="lbl">已建联</div></div>' +
+      '<div class="stat c-wait"><div class="num">' + s.no + '</div><div class="lbl">未建联</div></div>' +
+      '<div class="stat c-key"><div class="num">' + s.key + '</div><div class="lbl">重点客户</div></div>' +
+      '<div class="stat c-reg"><div class="num">' + s.reg + '</div><div class="lbl">已注册</div></div>' +
+      '<div class="stat c-a"><div class="num">' + s.a + '</div><div class="lbl">高价值</div></div>';
+  }
+
+  function markerIcon(c) {
+    var color = STATUS_COLOR[c.contacted] || '#94a3b8';
+    var size = c.keyAccount === '是' ? 16 : 12;
+    var style = 'width:' + size + 'px;height:' + size + 'px;background:' + color + ';';
+    style += c.contacted === '已建联' ? 'box-shadow:0 0 10px 3px ' + color + 'aa;' : 'opacity:.8;';
+    if (c.keyAccount === '是') style += 'outline:2px solid ' + color + ';outline-offset:2px;';
+    return L.divIcon({ className: 'mk-wrap', html: '<div class="mk" style="' + style + '"></div>', iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+  }
+
+  function renderMarkers(list) {
+    markerLayer.clearLayers(); markerByIndex = {};
+    list.forEach(function (c) {
+      if (!hasCoord(c)) return;
+      var idx = DATA.customers.indexOf(c);
+      var mk = L.marker([c.lat, c.lng], { icon: markerIcon(c) });
+      mk.bindTooltip(c.name, { direction: 'top', offset: [0, -8] });
+      mk.bindPopup(buildPopup(c));
+      mk.on('click', function () { setActive(idx); });
+      markerLayer.addLayer(mk); markerByIndex[idx] = mk;
+    });
+  }
+
+  function buildPopup(c) {
+    var stColor = STATUS_COLOR[c.contacted] || '#94a3b8';
+    var a = analyze(c);
+    var h = '<div class="pp-name">' + escapeHtml(c.name) + '</div><div class="pp-tags">';
+    h += '<span class="tag st" style="background:' + stColor + '">' + escapeHtml(c.contacted || '未建联') + '</span>';
+    if (c.keyAccount === '是') h += '<span class="tag key">重点</span>';
+    h += '<span class="tag ' + (a.level.charAt(0) === 'A' ? 'lvl-A' : 'lvl-B') + '">' + a.level + '</span>';
+    if (c.industry) h += '<span class="tag">' + escapeHtml(c.industry) + '</span>';
+    if (c.region) h += '<span class="tag">' + escapeHtml(c.region) + (c.district ? '·' + escapeHtml(c.district) : '') + '</span>';
+    if (c.source) h += '<span class="tag src">' + escapeHtml(c.source) + '</span>';
+    h += '</div>';
+    h += '<div class="pp-line">地址：<b>' + escapeHtml(c.address) + '</b></div>';
+    h += '<div class="pp-line">法人/联系人：<b>' + escapeHtml(c.contact) + '</b>' + (c.phone ? ' · ' + escapeHtml(c.phone) : '') + '</div>';
+    if (c.otherContacts) h += '<div class="pp-line">其他关键人：' + escapeHtml(c.otherContacts) + '</div>';
+    if (c.website) h += '<div class="pp-line">网站：' + escapeHtml(c.website) + '</div>';
+    h += '<div class="pp-line">PC ' + escapeHtml(c.pcCount) + ' 人 · 研发 ' + escapeHtml(c.rdCount) + ' 人 · 月消费 ' + escapeHtml(c.monthlySpend || 0) + ' 万</div>';
+    h += '<div class="pp-line">接入 ' + escapeHtml(c.accessMode || '未定') + ' · 模型 ' + escapeHtml(c.models || '-') + ' · 工具 ' + escapeHtml(c.tools || '-') + ' · 注册 ' + escapeHtml(c.registered || '否') + '</div>';
+    if (c.dynamics) h += '<div class="pp-line">动态：<b>' + escapeHtml(c.dynamics) + '</b></div>';
+    return h;
+  }
+
+  function renderList(list) {
+    var box = document.getElementById('list');
+    if (!list.length) {
+      box.innerHTML = '<div class="empty-tip">暂无匹配客户<br>点"＋ 添加客户"或"⛏ 探迹线索挖掘"</div>';
+      return;
+    }
+    var html = '';
+    list.forEach(function (c) {
+      var idx = DATA.customers.indexOf(c);
+      var stColor = STATUS_COLOR[c.contacted] || '#94a3b8';
+      html += '<div class="card' + (idx === activeIndex ? ' active' : '') + '" data-idx="' + idx + '">' +
+        '<div class="row1"><span class="dot" style="background:' + stColor + ';' + (c.contacted === '已建联' ? 'box-shadow:0 0 6px 1px ' + stColor + ';' : '') + '"></span>' +
+        '<span class="name">' + escapeHtml(c.name) + '</span>' +
+        '<button class="mini ana-btn" data-idx="' + idx + '" type="button">价值分析</button>' +
+        (isAdmin() ? '<button class="mini del-btn" data-idx="' + idx + '" type="button">删除</button>' : '') +
+        '</div>' +
+        '<div class="tags">' +
+        '<span class="tag st" style="background:' + stColor + '">' + escapeHtml(c.contacted || '未建联') + '</span>' +
+        (c.keyAccount === '是' ? '<span class="tag key">重点</span>' : '') +
+        levelTag(c) +
+        (c.industry ? '<span class="tag">' + escapeHtml(c.industry) + '</span>' : '') +
+        (c.region ? '<span class="tag">' + escapeHtml(c.region) + (c.district ? '·' + escapeHtml(c.district) : '') + '</span>' : '') +
+        (c.source ? '<span class="tag src">' + escapeHtml(c.source) + '</span>' : '') +
+        (hasCoord(c) ? '' : '<span class="tag" style="color:#f87171">缺坐标</span>') +
+        '</div>' +
+        '<div class="addr">' + escapeHtml(c.address || '') + (c.contact ? ' · <b>' + escapeHtml(c.contact) + '</b>' : '') + (c.phone ? ' · ' + escapeHtml(c.phone) : '') + '</div>' +
+        (c.dynamics ? '<div class="dyn">动态：' + escapeHtml(c.dynamics) + '</div>' : '') +
+        '</div>';
+    });
+    box.innerHTML = html;
+    box.querySelectorAll('.card').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.target.classList.contains('ana-btn')) return;
+        focusCustomer(parseInt(el.getAttribute('data-idx'), 10));
+      });
+    });
+    box.querySelectorAll('.ana-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { openAnalysis(parseInt(btn.getAttribute('data-idx'), 10)); });
+    });
+    box.querySelectorAll('.del-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        var c = DATA.customers[idx];
+        if (!c) return;
+        if (!confirm('确定删除客户「' + c.name + '」？')) return;
+        deleteCustomer(idx);
+      });
+    });
+  }
+
+  function deleteCustomer(idx) {
+    var c = DATA.customers[idx]; if (!c) return;
+    if (ONLINE && c.id != null) {
+      api('/api/customers?id=' + c.id, { method: 'DELETE' }).then(function (r) {
+        if (!r.ok) { toast('删除失败（需管理员权限）', true); return; }
+        DATA.customers.splice(idx, 1); render(); toast('已删除 ' + c.name);
+      });
+    } else {
+      DATA.customers.splice(idx, 1); render(); toast('已删除 ' + c.name + '（本地模式）');
+    }
+  }
+
+  function openAnalysis(idx) {
+    var c = DATA.customers[idx]; if (!c) return;
+    var a = analyze(c);
+    document.getElementById('anaName').textContent = '客户价值分析 · ' + c.name;
+    var lv = document.getElementById('anaLevel');
+    lv.textContent = a.level + '（评分 ' + a.score + '）';
+    lv.style.color = a.level.charAt(0) === 'A' ? '#fbbf24' : (a.level.charAt(0) === 'B' ? '#60a5fa' : '#94a3b8');
+    document.getElementById('anaOpp').innerHTML = a.opp.map(function (t) { return '<div class="ana-item">' + escapeHtml(t) + '</div>'; }).join('');
+    document.getElementById('anaRisk').innerHTML = a.risk.map(function (t) { return '<div class="ana-item risk">' + escapeHtml(t) + '</div>'; }).join('');
+    document.getElementById('anaMask').classList.add('show');
+  }
+
+  function focusCustomer(idx) {
+    var c = DATA.customers[idx]; if (!c) return;
+    if (hasCoord(c)) {
+      map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 15), { duration: 0.6 });
+      var mk = markerByIndex[idx];
+      if (mk) setTimeout(function () { mk.openPopup(); }, 650);
+      setActive(idx);
+    } else toast('该客户缺少经纬度，无法定位', true);
+  }
+  function setActive(idx) {
+    activeIndex = idx;
+    document.querySelectorAll('.card').forEach(function (el) {
+      el.classList.toggle('active', parseInt(el.getAttribute('data-idx'), 10) === idx);
+    });
+  }
+
+  // ---------- 足迹：热力 / 串联 / 路线 ----------
+  function updateHeat() {
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    if (!showHeat || !window.L.heatLayer) return;
+    var pts = [];
+    currentList.forEach(function (c) { if (hasCoord(c)) pts.push([c.lat, c.lng, c.keyAccount === '是' ? 1 : 0.6]); });
+    if (!pts.length) return;
+    heatLayer = L.heatLayer(pts, { radius: 30, blur: 20, maxZoom: 17, gradient: { 0.2: '#1d4ed8', 0.5: '#22d3ee', 0.75: '#fbbf24', 1.0: '#ef4444' } }).addTo(map);
+  }
+  function updateTrack() {
+    trackLayer.clearLayers();
+    if (!showTrack) return;
+    var pts = currentList.filter(function (c) { return c.contacted === '已建联' && hasCoord(c); });
+    if (pts.length < 2) return;
+    L.polyline(pts.map(function (c) { return [c.lat, c.lng]; }), { color: '#22d3ee', weight: 2, dashArray: '6 6', opacity: 0.85 }).addTo(trackLayer);
+  }
+  function clearRoute() { routeLayer.clearLayers(); }
+  function distKm(a1, g1, a2, g2) {
+    var R = 6371, r = function (x) { return x * Math.PI / 180; };
+    var dA = r(a2 - a1), dG = r(g2 - g1);
+    var a = Math.sin(dA / 2) * Math.sin(dA / 2) + Math.cos(r(a1)) * Math.cos(r(a2)) * Math.sin(dG / 2) * Math.sin(dG / 2);
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+  function buildRoute() {
+    clearRoute();
+    var pts = currentList.filter(hasCoord);
+    if (pts.length < 2) { toast('当前筛选下至少需要 2 家有坐标的客户才能规划路线', true); return; }
+    var cur = map.getCenter(), remaining = pts.slice(), order = [];
+    while (remaining.length) {
+      var bi = 0, bd = Infinity;
+      remaining.forEach(function (c, i) { var d = distKm(cur.lat, cur.lng, c.lat, c.lng); if (d < bd) { bd = d; bi = i; } });
+      var c = remaining.splice(bi, 1)[0]; order.push(c); cur = L.latLng(c.lat, c.lng);
+    }
+    var km = 0;
+    for (var i = 1; i < order.length; i++) km += distKm(order[i - 1].lat, order[i - 1].lng, order[i].lat, order[i].lng);
+    L.polyline(order.map(function (c) { return [c.lat, c.lng]; }), { color: '#fb923c', weight: 3, opacity: 0.9 }).addTo(routeLayer);
+    order.forEach(function (c, n) {
+      L.marker([c.lat, c.lng], { icon: L.divIcon({ className: 'mk-wrap', html: '<div class="rno">' + (n + 1) + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] }), interactive: false }).addTo(routeLayer);
+    });
+    toast('拜访足迹路线已生成：串联 ' + order.length + ' 家客户，预计直线总里程 ' + km.toFixed(1) + ' km');
+  }
+
+  // ---------- 图表 ----------
+  function renderCharts(list) {
+    var stData = CONTACTED_LIST.map(function (s) {
+      return { name: s, value: list.filter(function (c) { return (c.contacted || '未建联') === s; }).length, itemStyle: { color: STATUS_COLOR[s] } };
+    }).filter(function (d) { return d.value > 0; });
+    chartStatus.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['46%', '72%'], center: ['50%', '52%'],
+        label: { color: '#8fa0bd', fontSize: 11, formatter: '{b}\n{c}家' }, labelLine: { lineStyle: { color: '#33415e' } },
+        itemStyle: { borderColor: '#121b30', borderWidth: 2 },
+        data: stData.length ? stData : [{ name: '暂无数据', value: 1, itemStyle: { color: '#1c2947' } }] }]
+    }, true);
+
+    var indMap = {};
+    list.forEach(function (c) { var k = c.industry || '未分类'; indMap[k] = (indMap[k] || 0) + 1; });
+    var indKeys = Object.keys(indMap).sort(function (a, b) { return indMap[b] - indMap[a]; }).slice(0, 8);
+    chartIndustry.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 8, right: 26, top: 8, bottom: 4, containLabel: true },
+      xAxis: { type: 'value', show: false },
+      yAxis: { type: 'category', data: indKeys.length ? indKeys : ['暂无数据'], axisLabel: { color: '#8fa0bd', fontSize: 11 }, axisLine: { lineStyle: { color: '#22304f' } } },
+      series: [{ type: 'bar', barWidth: 12, itemStyle: { color: '#38bdf8', borderRadius: [0, 6, 6, 0] }, label: { show: true, position: 'right', color: '#8fa0bd', fontSize: 11 }, data: indKeys.length ? indKeys.map(function (k) { return indMap[k]; }) : [0] }]
+    }, true);
+
+    var regList = [];
+    list.forEach(function (c) { var k = c.region || '未分区'; if (regList.indexOf(k) < 0) regList.push(k); });
+    var series = CONTACTED_LIST.map(function (s) {
+      return { name: s, type: 'bar', stack: 'total', barWidth: 16, itemStyle: { color: STATUS_COLOR[s] },
+        data: regList.map(function (r) { return list.filter(function (c) { return (c.region || '未分区') === r && (c.contacted || '未建联') === s; }).length; }) };
+    });
+    chartRegion.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 8, right: 8, top: 8, bottom: 4, containLabel: true },
+      xAxis: { type: 'category', data: regList.length ? regList : ['暂无数据'], axisLabel: { color: '#8fa0bd', fontSize: 11, interval: 0, rotate: regList.length > 5 ? 30 : 0 }, axisLine: { lineStyle: { color: '#22304f' } } },
+      yAxis: { type: 'value', show: false },
+      series: series
+    }, true);
+  }
+
+  // ---------- 筛选控件 ----------
+  function fillSelect(el, values, allLabel) {
+    el.innerHTML = '<option value="">' + allLabel + '</option>' +
+      values.map(function (v) { return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; }).join('');
+  }
+  function districtOptions(city) {
+    var ds = ((DATA.districts || {})[city] || []).slice();
+    DATA.customers.forEach(function (c) { if (c.region === city && c.district && ds.indexOf(c.district) < 0) ds.push(c.district); });
+    return ds;
+  }
+  function focusRegion() {
+    if (!filters.region) { map.flyTo(DATA.mapCenter || [30.95, 112.35], DATA.mapZoom || 7, { duration: 0.6 }); return; }
+    var pts = getFiltered().filter(hasCoord).map(function (c) { return [c.lat, c.lng]; });
+    if (pts.length) map.flyToBounds(L.latLngBounds(pts).pad(0.25), { duration: 0.6, maxZoom: 15 });
+    else map.flyTo(CITY_CENTER[filters.region] || DATA.mapCenter, filters.district ? 12 : 10, { duration: 0.6 });
+  }
+  function initFilters() {
+    var regions = (DATA.regions || []).slice();
+    var industries = (DATA.industries || []).slice();
+    DATA.customers.forEach(function (c) {
+      if (c.region && regions.indexOf(c.region) < 0) regions.push(c.region);
+      if (c.industry && industries.indexOf(c.industry) < 0) industries.push(c.industry);
+    });
+    fillSelect(document.getElementById('fRegion'), regions, '全部地市');
+    fillSelect(document.getElementById('fDistrict'), [], '全部区县');
+    fillSelect(document.getElementById('fIndustry'), industries, '全部赛道');
+    fillSelect(document.getElementById('fContacted'), CONTACTED_LIST, '全部建联');
+    fillSelect(document.getElementById('fKey'), ['是', '否'], '全部重点');
+
+    document.getElementById('fRegion').addEventListener('change', function () {
+      filters.region = this.value; filters.district = '';
+      fillSelect(document.getElementById('fDistrict'), districtOptions(filters.region), '全部区县');
+      render(); focusRegion();
+    });
+    document.getElementById('fDistrict').addEventListener('change', function () { filters.district = this.value; render(); focusRegion(); });
+    document.getElementById('fIndustry').addEventListener('change', function () { filters.industry = this.value; render(); });
+    document.getElementById('fContacted').addEventListener('change', function () { filters.contacted = this.value; render(); });
+    document.getElementById('fKey').addEventListener('change', function () { filters.key = this.value; render(); });
+    document.getElementById('q').addEventListener('input', function () { filters.q = this.value.trim(); render(); });
+    document.getElementById('clearBtn').addEventListener('click', function () {
+      filters = { q: '', region: '', district: '', industry: '', contacted: '', key: '' };
+      document.getElementById('q').value = '';
+      ['fRegion', 'fDistrict', 'fIndustry', 'fContacted', 'fKey'].forEach(function (id) { document.getElementById(id).value = ''; });
+      fillSelect(document.getElementById('fDistrict'), [], '全部区县');
+      render(); focusRegion();
+    });
+
+    document.getElementById('dlIndustry').innerHTML = industries.map(function (v) { return '<option value="' + escapeHtml(v) + '">'; }).join('');
+    document.getElementById('dlAccess').innerHTML = (DATA.accessModes || []).map(function (v) { return '<option value="' + escapeHtml(v) + '">'; }).join('');
+  }
+
+  // ---------- 后端探测 / 读写 ----------
+  function loadBackend() {
+    fetch(API + '/api/health').then(function (r) { return r.json(); }).then(function (j) {
+      ONLINE = !!(j && j.ok);
+      authBoot();
+    }).catch(function () { ONLINE = false; authBoot(); });
+  }
+  function setModeBadge(on) {
+    var b = document.getElementById('modeBadge');
+    b.innerHTML = on
+      ? '<span class="mode-badge">在线 · 探迹中转+Neon</span>'
+      : '<span class="mode-badge off">模拟模式 · 未连接中转</span>';
+  }
+  function loadCustomers() {
+    api('/api/customers').then(function (r) { return r.json(); }).then(function (rows) {
+      if (Array.isArray(rows) && rows.length) DATA.customers = rows;
+      setModeBadge(true);
+      render();
+    }).catch(function () { setModeBadge(true); render(); });
+  }
+  function saveCustomer(c, cb) {
+    if (!ONLINE) { DATA.customers.push(c); cb(true, true); return; }
+    fetch(API + '/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + AUTH.token }, body: JSON.stringify(c) })
+      .then(function (r) { cb(r.ok, false); })
+      .catch(function () { cb(false, false); });
+  }
+
+  // ---------- 自动回填 ----------
+  function simulateEnrich(name) {
+    var h = hash(name);
+    var region = document.getElementById('mRegion').value || '武汉';
+    var ds = districtOptions(region);
+    var district = document.getElementById('mDistrict').value || (ds.length ? ds[h % ds.length] : '');
+    var center = CITY_CENTER[region] || DATA.mapCenter;
+    var surnames = ['王', '李', '张', '刘', '陈'];
+    var models = ['通义', 'DeepSeek', 'GPT', 'GLM', '文心'];
+    var tools = ['Cursor', 'Dify', 'Coze', 'Copilot'];
+    var pc = 20 + (h % 280);
+    return {
+      website: 'https://www.' + ['hb', 'wh', 'yc', 'xy'][h % 4] + ((h % 998) + 1) + '.com',
+      address: region + (district || '') + 'xx路' + ((h % 99) + 1) + '号',
+      contact: surnames[h % 5] + '总',
+      phone: '138' + String(h % 100000000).padStart(8, '0'),
+      otherContacts: '',
+      pcCount: pc,
+      rdCount: Math.max(2, Math.round(pc * (0.15 + (h % 30) / 100))),
+      accessMode: (DATA.accessModes || ['API'])[h % 5],
+      monthlySpend: h % 12,
+      models: models[h % 5] + '/' + models[(h + 1) % 5],
+      tools: tools[h % 4],
+      registered: h % 2 ? '是' : '否',
+      contacted: '未建联',
+      region: region, district: district,
+      lat: +(center[0] + ((h % 100) - 50) / 400).toFixed(4),
+      lng: +(center[1] + (((h >> 3) % 100) - 50) / 400).toFixed(4),
+      dynamics: '探迹/天眼查模拟回填：经营状态正常，近期无重大变更'
+    };
+  }
+  function applyEnrich(e) {
+    function set(id, v) { if (v != null && v !== '' && !document.getElementById(id).value) document.getElementById(id).value = v; }
+    set('mWebsite', e.website); set('mAddress', e.address); set('mContact', e.contact); set('mPhone', e.phone);
+    set('mOtherContacts', e.otherContacts); set('mPcCount', e.pcCount); set('mRdCount', e.rdCount);
+    set('mAccessMode', e.accessMode); set('mMonthlySpend', e.monthlySpend); set('mModels', e.models); set('mTools', e.tools);
+    if (e.registered) document.getElementById('mRegistered').value = e.registered;
+    if (e.contacted) document.getElementById('mContacted').value = e.contacted;
+    if (e.region) { document.getElementById('mRegion').value = e.region; refreshMDistrict(e.region); }
+    if (e.district) document.getElementById('mDistrict').value = e.district;
+    set('mLat', e.lat); set('mLng', e.lng);
+    window._lastDynamics = e.dynamics || '';
+  }
+  function doEnrich() {
+    var name = document.getElementById('mName').value.trim();
+    if (!name) { toast('请先输入客户名称再自动回填', true); return; }
+    if (ONLINE) {
+      toast('正在调用探迹/天眼查/爱企查回填…');
+      fetch(API + '/api/enrich?name=' + encodeURIComponent(name), { headers: { Authorization: 'Bearer ' + AUTH.token } }).then(function (r) { return r.json(); }).then(function (e) {
+        applyEnrich(e); toast('已自动回填（探迹/天眼查/爱企查）');
+      }).catch(function () { applyEnrich(simulateEnrich(name)); toast('回填接口失败，已切换模拟回填', true); });
+    } else {
+      applyEnrich(simulateEnrich(name));
+      toast('模拟回填完成（未连接中转，数据为模拟）');
+    }
+  }
+
+  // ---------- 添加客户 ----------
+  function refreshMDistrict(city) {
+    fillSelect(document.getElementById('mDistrict'), districtOptions(city), '选择区县');
+  }
+  function openModal() {
+    ['mName', 'mWebsite', 'mAddress', 'mContact', 'mPhone', 'mOtherContacts', 'mPcCount', 'mRdCount', 'mAccessMode', 'mMonthlySpend', 'mModels', 'mTools', 'mLat', 'mLng', 'mIndustry'].forEach(function (id) { document.getElementById(id).value = ''; });
+    document.getElementById('mKey').value = '否';
+    document.getElementById('mContacted').value = '未建联';
+    document.getElementById('mRegistered').value = '否';
+    fillSelect(document.getElementById('mRegion'), DATA.regions || [], '选择地市');
+    refreshMDistrict('');
+    document.getElementById('modalMask').classList.add('show');
+  }
+  function readModal() {
+    return {
+      name: document.getElementById('mName').value.trim(),
+      keyAccount: document.getElementById('mKey').value,
+      industry: document.getElementById('mIndustry').value.trim(),
+      website: document.getElementById('mWebsite').value.trim(),
+      address: document.getElementById('mAddress').value.trim(),
+      contact: document.getElementById('mContact').value.trim(),
+      phone: document.getElementById('mPhone').value.trim(),
+      otherContacts: document.getElementById('mOtherContacts').value.trim(),
+      contacted: document.getElementById('mContacted').value,
+      pcCount: num(document.getElementById('mPcCount').value),
+      rdCount: num(document.getElementById('mRdCount').value),
+      accessMode: document.getElementById('mAccessMode').value.trim() || '未定',
+      monthlySpend: num(document.getElementById('mMonthlySpend').value),
+      models: document.getElementById('mModels').value.trim(),
+      tools: document.getElementById('mTools').value.trim(),
+      registered: document.getElementById('mRegistered').value,
+      region: document.getElementById('mRegion').value,
+      district: document.getElementById('mDistrict').value,
+      lat: parseFloat(document.getElementById('mLat').value),
+      lng: parseFloat(document.getElementById('mLng').value),
+      dynamics: window._lastDynamics || '',
+      source: ONLINE ? '探迹' : '自拓',
+      note: ''
+    };
+  }
+  function saveFromModal() {
+    var c = readModal();
+    if (!c.name) { toast('客户名称为必填', true); return; }
+    if (!c.address) { toast('公司地址为必填', true); return; }
+    if (!c.contact) { toast('法人/联系人为必填', true); return; }
+    saveCustomer(c, function (ok, local) {
+      document.getElementById('modalMask').classList.remove('show');
+      if (!ok) { toast('保存失败', true); return; }
+      render();
+      toast(local ? '已添加（本地模拟模式，未入库）' : '已保存并写入数据库');
+      var idx = DATA.customers.indexOf(c);
+      if (idx >= 0 && hasCoord(c)) setTimeout(function () { focusCustomer(idx); }, 300);
+    });
+  }
+
+  // ---------- 探迹挖掘 ----------
+  function mineLeads() {
+    var region = filters.region, track = filters.industry;
+    if (!region || !track) { toast('请先选择"区域"和"赛道"两个维度进行联合获客', true); return; }
+    if (ONLINE) {
+      toast('正在调用探迹中转：' + region + '×' + track + '（批量写入 Neon）…');
+      fetch(API + '/api/tunjie?region=' + encodeURIComponent(region) + '&track=' + encodeURIComponent(track), { headers: { Authorization: 'Bearer ' + AUTH.token } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var leads = data && data.leads ? data.leads : [];
+          if (!leads.length) { toast('中转未返回线索', true); return; }
+          leads.forEach(function (l) { DATA.customers.push(l); });
+          render();
+          toast('已从探迹拉取 ' + leads.length + ' 条线索' + (data.written != null ? '，批量写入 Neon ' + data.written + ' 条' : ''));
+        })
+        .catch(function (e) { toast('探迹中转调用失败：' + (e && e.message ? e.message : e), true); });
+      return;
+    }
+    var n = 3 + Math.floor(Math.random() * 3);
+    var center = CITY_CENTER[region] || DATA.mapCenter;
+    var dss = districtOptions(region);
+    for (var i = 0; i < n; i++) {
+      DATA.customers.push({
+        name: '[模拟]' + region + track + '企业' + (i + 1),
+        keyAccount: i === 0 ? '是' : '否', industry: track, website: '',
+        address: region + 'xx路' + (i + 1) + '号', contact: ['王', '李', '张'][i % 3] + '总', phone: '',
+        otherContacts: '', contacted: '未建联', pcCount: 30 + i * 20, rdCount: 5 + i * 5,
+        accessMode: '未定', monthlySpend: 0, models: '', tools: '', registered: '否',
+        region: region, district: dss.length ? dss[i % dss.length] : '',
+        lat: +(center[0] + (Math.random() - 0.5) * 0.3).toFixed(4),
+        lng: +(center[1] + (Math.random() - 0.5) * 0.3).toFixed(4),
+        dynamics: '', source: '探迹(模拟)', note: '模拟线索：后端中转未连接'
+      });
+    }
+    render();
+    toast('模拟模式：已生成 ' + n + ' 条"' + region + '×' + track + '"线索，接入中转后可拉取真实探迹数据');
+  }
+
+  // ---------- 导出 Excel ----------
+  function openExport() {
+    var inds = {};
+    currentList.forEach(function (c) { if (c.industry) inds[c.industry] = 1; });
+    fillSelect(document.getElementById('eIndustry'), Object.keys(inds), '全部赛道');
+    fillSelect(document.getElementById('eContacted'), CONTACTED_LIST, '全部建联');
+    fillSelect(document.getElementById('eKey'), ['是', '否'], '全部重点');
+    fillSelect(document.getElementById('eRegistered'), ['是', '否'], '全部注册');
+    document.getElementById('expMask').classList.add('show');
+  }
+  function doExport() {
+    var ei = document.getElementById('eIndustry').value;
+    var ec = document.getElementById('eContacted').value;
+    var ek = document.getElementById('eKey').value;
+    var er = document.getElementById('eRegistered').value;
+    var rows = currentList.filter(function (c) {
+      if (ei && c.industry !== ei) return false;
+      if (ec && (c.contacted || '未建联') !== ec) return false;
+      if (ek && c.keyAccount !== ek) return false;
+      if (er && c.registered !== er) return false;
+      return true;
+    });
+    if (!rows.length) { toast('当前筛选条件下无数据可导出', true); return; }
+    var data = rows.map(function (c) {
+      var o = {};
+      FIELDS_META.forEach(function (f) { o[f[1]] = c[f[0]] != null ? c[f[0]] : ''; });
+      return o;
+    });
+    var ws = XLSX.utils.json_to_sheet(data);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '客户');
+    XLSX.writeFile(wb, '销售作战图客户_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    document.getElementById('expMask').classList.remove('show');
+    toast('已导出 ' + rows.length + ' 条客户到 Excel');
+  }
+
+  // ---------- 启动 ----------
+  document.getElementById('subTitle').textContent = DATA.title || '';
+  initFilters();
+  document.getElementById('addBtn').addEventListener('click', openModal);
+  document.getElementById('cancelBtn').addEventListener('click', function () { picking = false; document.getElementById('pickHint').style.display = 'none'; document.getElementById('modalMask').classList.remove('show'); });
+  document.getElementById('saveBtn').addEventListener('click', saveFromModal);
+  document.getElementById('enrichBtn').addEventListener('click', doEnrich);
+  document.getElementById('mRegion').addEventListener('change', function () { refreshMDistrict(this.value); });
+  document.getElementById('pickBtn').addEventListener('click', function () {
+    document.getElementById('modalMask').classList.remove('show');
+    document.getElementById('pickHint').style.display = 'block';
+    picking = true; toast('请在地图上点击客户所在位置');
+  });
+  document.getElementById('anaClose').addEventListener('click', function () { document.getElementById('anaMask').classList.remove('show'); });
+  document.getElementById('mineBtn').addEventListener('click', mineLeads);
+  document.getElementById('exportBtn').addEventListener('click', openExport);
+  document.getElementById('expGo').addEventListener('click', doExport);
+  document.getElementById('expClose').addEventListener('click', function () { document.getElementById('expMask').classList.remove('show'); });
+  document.getElementById('userClose').addEventListener('click', function () { document.getElementById('userMask').classList.remove('show'); });
+  document.getElementById('toReg').addEventListener('click', function () {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('regForm').style.display = '';
+  });
+  document.getElementById('toLg').addEventListener('click', function () {
+    document.getElementById('regForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = '';
+  });
+  document.getElementById('lgBtn').addEventListener('click', function () {
+    var name = document.getElementById('lgUser').value.trim();
+    var pass = document.getElementById('lgPass').value;
+    if (!name || !pass) { toast('请输入用户名和密码', true); return; }
+    authLogin(name, pass).then(function () { enterApp(); toast('登录成功，欢迎 ' + name); })
+      .catch(function (e) { toast(String(e && e.message || e), true); });
+  });
+  document.getElementById('rgBtn').addEventListener('click', function () {
+    var name = document.getElementById('rgUser').value.trim();
+    var pass = document.getElementById('rgPass').value;
+    var pass2 = document.getElementById('rgPass2').value;
+    if (name.length < 2) { toast('用户名至少 2 个字符', true); return; }
+    if (pass.length < 6) { toast('密码至少 6 位', true); return; }
+    if (pass !== pass2) { toast('两次密码不一致', true); return; }
+    authRegister(name, pass).then(function () { enterApp(); toast('注册成功' + (isAdmin() ? '，已设为管理员' : '') + '，欢迎 ' + name); })
+      .catch(function (e) { toast(String(e && e.message || e), true); });
+  });
+  loadBackend();
+})();
+</script>
+</body>
+</html>

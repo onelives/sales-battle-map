@@ -1,0 +1,9 @@
+{
+  "name": "sales-battle-relay",
+  "version": "2.0.0",
+  "description": "销售作战图后端中转：零依赖（Node 内置模块）。探迹拉线索 + Neon 批量写入 + 静态服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

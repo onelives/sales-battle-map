@@ -1,0 +1,9 @@
+{
+  "name": "sales-battle-map",
+  "version": "2.0.0",
+  "private": true,
+  "description": "湖北全域销售作战图：地图+足迹点亮+探迹双维获客+Neon存储（零依赖Node中转）",
+  "scripts": {
+    "start": "node server/server.js"
+  }
+}
