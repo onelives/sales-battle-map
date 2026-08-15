@@ -296,10 +296,9 @@
       <div><label>模型种类</label><input id="mModels" type="text" placeholder="如：通义/DeepSeek"></div>
       <div><label>使用工具</label><input id="mTools" type="text" placeholder="如：Cursor/Dify"></div>
     </div>
-    <label>经纬度（地图布点用，可地图选点）</label>
+    <label>地图坐标（保存时按地市自动分配，也可地图选点精调）</label>
     <div class="coord-row">
-      <input id="mLat" type="text" placeholder="纬度">
-      <input id="mLng" type="text" placeholder="经度">
+      <input id="mCoordTip" type="text" disabled placeholder="自动分配 · 需精调时点右侧地图选点">
       <button id="pickBtn" type="button">地图选点</button>
     </div>
     <div class="modal-actions">
@@ -632,10 +631,10 @@
   map.on('click', function (e) {
     if (!picking) return;
     picking = false;
+    pickedCoords = [e.latlng.lat, e.latlng.lng];
     document.getElementById('pickHint').style.display = 'none';
     document.getElementById('modalMask').classList.add('show');
-    document.getElementById('mLat').value = e.latlng.lat.toFixed(6);
-    document.getElementById('mLng').value = e.latlng.lng.toFixed(6);
+    document.getElementById('mCoordTip').value = '已手动选点：' + e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && picking) {
@@ -667,6 +666,15 @@
   function hasCoord(c) { return typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng); }
   function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
   function hash(s) { var h = 0; s = String(s || ''); for (var i = 0; i < s.length; i++) h = ((h * 31) + s.charCodeAt(i)) >>> 0; return h; }
+  function autoCoord(region, seed) {
+    var c = CITY_CENTER[region] || DATA.mapCenter || [30.95, 112.35];
+    var h = hash(seed || String(Math.random()));
+    return [
+      +(c[0] + (((h % 1000) - 500) / 6000)).toFixed(4),
+      +(c[1] + ((((h >> 4) % 1000) - 500) / 6000)).toFixed(4)
+    ];
+  }
+  var pickedCoords = null;
 
   // ---------- 客户价值分析 ----------
   function analyze(c) {
@@ -1084,7 +1092,10 @@
     if (e.contacted) document.getElementById('mContacted').value = e.contacted;
     if (e.region) { document.getElementById('mRegion').value = e.region; refreshMDistrict(e.region); }
     if (e.district) document.getElementById('mDistrict').value = e.district;
-    set('mLat', e.lat); set('mLng', e.lng);
+    if (e.lat != null && e.lng != null) {
+      pickedCoords = [e.lat, e.lng];
+      document.getElementById('mCoordTip').value = '回填坐标：' + e.lat + ', ' + e.lng;
+    }
     window._lastDynamics = e.dynamics || '';
   }
   function doEnrich() {
@@ -1106,7 +1117,9 @@
     fillSelect(document.getElementById('mDistrict'), districtOptions(city), '选择区县');
   }
   function openModal() {
-    ['mName', 'mWebsite', 'mAddress', 'mContact', 'mPhone', 'mOtherContacts', 'mPcCount', 'mRdCount', 'mAccessMode', 'mMonthlySpend', 'mModels', 'mTools', 'mLat', 'mLng', 'mIndustry'].forEach(function (id) { document.getElementById(id).value = ''; });
+    ['mName', 'mWebsite', 'mAddress', 'mContact', 'mPhone', 'mOtherContacts', 'mPcCount', 'mRdCount', 'mAccessMode', 'mMonthlySpend', 'mModels', 'mTools', 'mCoordTip', 'mIndustry'].forEach(function (id) { document.getElementById(id).value = ''; });
+    pickedCoords = null;
+    window._lastDynamics = '';
     document.getElementById('mKey').value = '否';
     document.getElementById('mContacted').value = '未建联';
     document.getElementById('mRegistered').value = '否';
@@ -1115,7 +1128,7 @@
     document.getElementById('modalMask').classList.add('show');
   }
   function readModal() {
-    return {
+    var c = {
       name: document.getElementById('mName').value.trim(),
       keyAccount: document.getElementById('mKey').value,
       industry: document.getElementById('mIndustry').value.trim(),
@@ -1134,12 +1147,14 @@
       registered: document.getElementById('mRegistered').value,
       region: document.getElementById('mRegion').value,
       district: document.getElementById('mDistrict').value,
-      lat: parseFloat(document.getElementById('mLat').value),
-      lng: parseFloat(document.getElementById('mLng').value),
+      lat: 0, lng: 0,
       dynamics: window._lastDynamics || '',
       source: ONLINE ? '探迹' : '自拓',
       note: ''
     };
+    var coord = pickedCoords || autoCoord(c.region, c.name + c.address);
+    c.lat = coord[0]; c.lng = coord[1];
+    return c;
   }
   function saveFromModal() {
     var c = readModal();
