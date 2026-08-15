@@ -353,6 +353,23 @@
   </div>
 </div>
 
+<!-- 修改密码 -->
+<div class="modal-mask" id="pwdMask">
+  <div class="modal">
+    <h2>修改密码</h2>
+    <label>原密码</label>
+    <input id="pOld" type="password" autocomplete="current-password" placeholder="输入当前密码">
+    <label>新密码（至少 6 位）</label>
+    <input id="pNew" type="password" autocomplete="new-password" placeholder="输入新密码">
+    <label>确认新密码</label>
+    <input id="pNew2" type="password" autocomplete="new-password" placeholder="再次输入新密码">
+    <div class="modal-actions">
+      <button id="pwdGo" class="primary" type="button">确认修改</button>
+      <button id="pwdClose" class="ghost" type="button">取消</button>
+    </div>
+  </div>
+</div>
+
 <script src="data.js"></script>
 <script>
 (function () {
@@ -425,6 +442,16 @@
     if (op === 'del') { dSave(u.filter(function (v) { return v.username !== arg; })); }
     return Promise.resolve();
   }
+  function demoChangePassword(oldP, newP) {
+    var u = dUsers(); var x = null;
+    u.forEach(function (v) { if (v.username === AUTH.user.username) x = v; });
+    if (!x) return Promise.reject('用户不存在');
+    return sha256(x.salt + oldP).then(function (h) {
+      if (h !== x.hash) throw '原密码错误';
+      var salt = 's' + Date.now();
+      return sha256(salt + newP).then(function (h2) { x.salt = salt; x.hash = h2; dSave(u); });
+    });
+  }
   function authLogin(name, pass) {
     if (ONLINE) {
       return api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: name, password: pass }) })
@@ -477,8 +504,13 @@
     box.innerHTML =
       '<span style="font-size:13px;font-weight:600">' + escapeHtml(AUTH.user.username) + '</span>' +
       '<span class="urole' + (isAdmin() ? ' admin' : '') + '">' + (isAdmin() ? '管理员' : '普通用户') + '</span>' +
+      '<button class="mini" id="pwdBtn" type="button">改密</button>' +
       (isAdmin() ? '<button class="mini" id="umBtn" type="button">用户管理</button>' : '') +
       '<button class="mini" id="logoutBtn" type="button">退出</button>';
+    document.getElementById('pwdBtn').addEventListener('click', function () {
+      ['pOld', 'pNew', 'pNew2'].forEach(function (id) { document.getElementById(id).value = ''; });
+      document.getElementById('pwdMask').classList.add('show');
+    });
     var um = document.getElementById('umBtn');
     if (um) um.addEventListener('click', openUserMgr);
     document.getElementById('logoutBtn').addEventListener('click', function () {
@@ -1217,6 +1249,23 @@
   document.getElementById('expGo').addEventListener('click', doExport);
   document.getElementById('expClose').addEventListener('click', function () { document.getElementById('expMask').classList.remove('show'); });
   document.getElementById('userClose').addEventListener('click', function () { document.getElementById('userMask').classList.remove('show'); });
+  document.getElementById('pwdClose').addEventListener('click', function () { document.getElementById('pwdMask').classList.remove('show'); });
+  document.getElementById('pwdGo').addEventListener('click', function () {
+    var oldP = document.getElementById('pOld').value;
+    var newP = document.getElementById('pNew').value;
+    var new2 = document.getElementById('pNew2').value;
+    if (!oldP) { toast('请输入原密码', true); return; }
+    if (newP.length < 6) { toast('新密码至少 6 位', true); return; }
+    if (newP !== new2) { toast('两次新密码不一致', true); return; }
+    var p = ONLINE
+      ? api('/api/auth/password', { method: 'POST', body: JSON.stringify({ oldPassword: oldP, newPassword: newP }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw (j.error || '修改失败'); }); })
+      : demoChangePassword(oldP, newP);
+    p.then(function () {
+      document.getElementById('pwdMask').classList.remove('show');
+      toast('密码已修改，下次登录请使用新密码');
+    }).catch(function (e) { toast(String(e && e.message || e), true); });
+  });
   document.getElementById('toReg').addEventListener('click', function () {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('regForm').style.display = '';

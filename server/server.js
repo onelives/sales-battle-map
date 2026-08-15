@@ -148,6 +148,11 @@ async function userSetRole(name, role) {
   if (storageType() === 'neon') return await neonFetch('UPDATE users SET role=$1 WHERE username=$2', [role, name]);
   const u = memUsers.find(v => v.username === name); if (u) u.role = role; return {};
 }
+async function userSetPass(name, passHash, salt) {
+  if (storageType() === 'supabase') return await supaFetch('users?username=eq.' + encodeURIComponent(name), { method: 'PATCH', body: JSON.stringify({ pass_hash: passHash, salt }) });
+  if (storageType() === 'neon') return await neonFetch('UPDATE users SET pass_hash=$1, salt=$2 WHERE username=$3', [passHash, salt, name]);
+  const u = memUsers.find(v => v.username === name); if (u) { u.pass_hash = passHash; u.salt = salt; } return {};
+}
 async function userDelete(name) {
   if (storageType() === 'supabase') return await supaFetch('users?username=eq.' + encodeURIComponent(name), { method: 'DELETE' });
   if (storageType() === 'neon') return await neonFetch('DELETE FROM users WHERE username=$1', [name]);
@@ -286,6 +291,15 @@ http.createServer(async (req, res) => {
       const au = authUser(req);
       if (u.startsWith('/api/auth/me')) return au ? json(res, 200, { user: au }) : json(res, 401, { error: '未登录' });
       if (!au) return json(res, 401, { error: '未登录' });
+      if (u.startsWith('/api/auth/password')) {
+        const oldP = String(body.oldPassword || ''), newP = String(body.newPassword || '');
+        if (newP.length < 6) return json(res, 400, { error: '新密码至少 6 位' });
+        const usr = await userByName(au.username);
+        if (!usr || usr.pass_hash !== hashPass(oldP, usr.salt)) return json(res, 400, { error: '原密码错误' });
+        const salt = newSalt();
+        await userSetPass(au.username, hashPass(newP, salt), salt);
+        return json(res, 200, { ok: true });
+      }
       if (u.startsWith('/api/auth/users')) {
         if (au.role !== 'admin') return json(res, 403, { error: '需管理员权限' });
         return json(res, 200, await usersAll());
