@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全湖北赛道智能销售工作台 · 项目交接文档</title>
+<style>
+  :root {
+    --ink: #0c1210; --ink2: #101915; --ink3: #17231d;
+    --line: #26382e; --line2: #3d5a49;
+    --text: #edf4ee; --muted: #8fa69a;
+    --amber: #ffb454; --amber2: #e08e2b;
+    --phos: #8fe3b0; --red: #ff6b5e; --cyan: #7fd4dc;
+    --font-disp: 'Bahnschrift','DIN Alternate','Avenir Next Condensed','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-body: 'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+    --font-mono: 'SF Mono',ui-monospace,'Cascadia Mono',Consolas,'PingFang SC',monospace;
+    --notch: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font-body); color: var(--text); line-height: 1.75;
+    background:
+      radial-gradient(1100px 480px at 75% -12%, rgba(255,180,84,.07), transparent 62%),
+      repeating-linear-gradient(0deg, transparent 0 47px, rgba(143,227,176,.04) 47px 48px),
+      repeating-linear-gradient(90deg, transparent 0 47px, rgba(143,227,176,.04) 47px 48px),
+      var(--ink);
+    padding: 48px 20px 80px;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px);} to { opacity: 1; transform: none;} }
+  header.doc { animation: rise .5s .05s both; border: 1px solid var(--line2); background: rgba(16,25,21,.85); clip-path: var(--notch); padding: 34px 38px; position: relative; }
+  header.doc::before { content: 'PROJECT HANDOVER · CONFIDENTIAL'; position: absolute; top: 12px; right: 18px; font-family: var(--font-mono); font-size: 9px; letter-spacing: .24em; color: var(--line2); }
+  .seal { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border: 1px solid var(--amber); color: var(--amber); font-family: var(--font-disp); font-size: 26px; font-weight: 800; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); margin-bottom: 16px; }
+  h1 { font-family: var(--font-disp); font-size: 30px; letter-spacing: .12em; }
+  .docmeta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .chip { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--line); padding: 3px 10px; }
+  .chip b { color: var(--amber); font-weight: 600; }
+  nav.toc { margin: 26px 0; border: 1px solid var(--line); background: rgba(16,25,21,.7); padding: 18px 24px; animation: rise .5s .12s both; }
+  nav.toc h2 { font-family: var(--font-disp); font-size: 13px; letter-spacing: .2em; color: var(--amber); margin-bottom: 10px; }
+  nav.toc ol { list-style: none; columns: 2; gap: 40px; }
+  nav.toc a { color: var(--muted); text-decoration: none; font-size: 13px; display: block; padding: 3px 0; }
+  nav.toc a:hover { color: var(--amber); }
+  nav.toc a::before { content: '▮ '; color: var(--line2); }
+  section { margin-top: 40px; animation: rise .5s both; }
+  section > h2 { font-family: var(--font-disp); font-size: 20px; letter-spacing: .14em; color: var(--amber); border-bottom: 1px solid var(--line2); padding-bottom: 10px; margin-bottom: 18px; }
+  section > h2 .no { color: var(--line2); margin-right: 10px; }
+  h3 { font-size: 15px; color: var(--phos); letter-spacing: .08em; margin: 22px 0 10px; }
+  h3::before { content: '▮ '; }
+  p { color: var(--text); font-size: 14px; margin-bottom: 10px; }
+  p.muted, li.muted { color: var(--muted); }
+  ul, ol.body { margin: 0 0 12px 22px; font-size: 14px; }
+  li { margin-bottom: 6px; }
+  li b, p b { color: var(--amber); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 13px; background: rgba(16,25,21,.7); }
+  th { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; color: var(--amber); text-align: left; padding: 9px 12px; border: 1px solid var(--line); background: rgba(255,180,84,.06); }
+  td { padding: 8px 12px; border: 1px solid var(--line); color: var(--text); vertical-align: top; }
+  td.m, .m { color: var(--muted); }
+  code, pre { font-family: var(--font-mono); }
+  code { color: var(--cyan); font-size: 12px; background: rgba(127,212,220,.08); padding: 1px 6px; }
+  pre { background: #0a0f0d; border: 1px solid var(--line); border-left: 2px solid var(--amber); padding: 14px 16px; overflow-x: auto; font-size: 12px; line-height: 1.7; margin: 12px 0 18px; color: #cfe6d8; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .box { border: 1px solid var(--line); background: rgba(16,25,21,.7); padding: 14px 18px; position: relative; }
+  .box::before, .box::after { content: ''; position: absolute; width: 8px; height: 8px; border-color: var(--line2); border-style: solid; }
+  .box::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .box::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .tagrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .t { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; border: 1px solid var(--line); color: var(--muted); padding: 2px 8px; }
+  .t.a { color: var(--amber); border-color: rgba(255,180,84,.5); }
+  .t.g { color: var(--phos); border-color: rgba(143,227,176,.45); }
+  .t.r { color: var(--red); border-color: rgba(255,107,94,.5); }
+  .sign { margin-top: 30px; }
+  .sign td { height: 56px; }
+  @media (max-width: 800px) { nav.toc ol { columns: 1; } .grid2 { grid-template-columns: 1fr; } }
+  @media print { body { background: #fff; color: #111; padding: 0; } section>h2, h1, h3 { color: #8a4d0f; } p, li, td { color: #222; } th { color: #8a4d0f; background: #faf3e8; } pre { color: #222; background: #f6f6f6; } .box, table, nav.toc, header.doc { background: #fff; border-color: #bbb; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="seal">战</div>
+  <h1>全湖北赛道智能销售工作台</h1>
+  <p class="muted" style="margin-top:6px">项目交接文档 · 面向开发 / 运维接手 · 结构规范 · 可直接落地</p>
+  <div class="docmeta">
+    <span class="chip">版本 <b>V1.0</b></span>
+    <span class="chip">交接日期 <b>2026-08-16</b></span>
+    <span class="chip">存储 <b>Neon Serverless PostgreSQL</b></span>
+    <span class="chip">地域 <b>湖北省全域</b></span>
+    <span class="chip">赛道 <b>51 条</b></span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目录 / CONTENTS</h2>
+  <ol>
+    <li><a href="#s1">一、项目概述</a></li>
+    <li><a href="#s2">二、系统核心能力清单</a></li>
+    <li><a href="#s3">三、技术架构交接说明</a></li>
+    <li><a href="#s4">四、数据字典与字段规范</a></li>
+    <li><a href="#s5">五、项目开发约束规范</a></li>
+    <li><a href="#s6">六、待实现迭代清单</a></li>
+    <li><a href="#s7">七、项目交付总结</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <h2><span class="no">01</span>项目概述</h2>
+  <p><b>项目名称</b>：全湖北赛道智能销售工作台（仓库内代号 <code>sales-battle-map</code>）。</p>
+  <p><b>项目定位</b>：面向 B 端 AI / 科技赛道销售的一体化客户管理、线索获客、智能分析个人工作台。以"作战地图 + 足迹点亮 + 双维获客 + 价值分析"为核心交互形态。</p>
+  <p><b>覆盖赛道</b>：51 条 AI、数字化、智能硬件、企业服务、内容文娱、医疗科技全品类商业赛道（完整清单见 §4 数据字典）。</p>
+  <p><b>地域范围</b>：仅限湖北省全域 17 地市州——武汉、黄石、十堰、宜昌、襄阳、鄂州、荆门、孝感、荆州、黄冈、咸宁、随州、恩施州、仙桃、潜江、天门、神农架。</p>
+  <p><b>存储方案</b>：Neon Serverless PostgreSQL（替代 Supabase）。选择原因：Neon 提供零依赖 HTTP SQL 协议，后端无需驱动包即可读写，适配零依赖中转服务与 Serverless 部署。</p>
+  <p><b>数据源优先级</b>：探迹开放 API（核心线索来源）→ 天眼查 / 爱企查（企业信息与动态补充）。</p>
+  <p><b>系统架构</b>：前端页面 + 后端中转服务（密钥托管）+ Neon 数据库三层结构；所有第三方接口均走后端代理，<b>禁止前端直接调用</b>。</p>
+  <div class="grid2">
+    <div class="box">
+      <h3>交付资产</h3>
+      <ul>
+        <li>代码仓库：<code>github.com/onelives/sales-battle-map</code>（公开）</li>
+        <li>正式链接：<code>onelives.github.io/sales-battle-map/</code></li>
+        <li>镜像链接：<code>9lp22ycy.qwenwork.host</code>（QW Pages）</li>
+        <li>后端交付包：<code>探迹Neon后端.zip</code> / <code>server/</code></li>
+        <li>Neon 项目：<code>flat-lab-91250958</code></li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>运行模式</h3>
+      <ul>
+        <li><b>在线（真实）模式</b>：部署 <code>server/</code> 后前端自动探测 <code>/api/health</code> 切换，数据落 Neon。</li>
+        <li><b>模拟模式</b>：无后端时前端本地运行，线索/回填/账户均为模拟并明确标注；演示账户 <code>admin / admin123</code>。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="no">02</span>系统核心能力清单</h2>
+  <table>
+    <tr><th style="width:4%">#</th><th style="width:20%">能力</th><th>规范说明</th><th style="width:16%">实现状态</th></tr>
+    <tr><td>1</td><td>全域获客</td><td>湖北全省地市筛选、地区 + 赛道双维度精准获客；可通过探迹平台实时调取企业线索批量入库（<code>GET /api/tunjie?region=&track=</code>，单条 INSERT 多 VALUES 批量写、<code>ON CONFLICT</code> 幂等）。</td><td><span class="t g">已交付</span> 真实 API 待密钥接入</td></tr>
+    <tr><td>2</td><td>地图足迹系统</td><td>全省客户点位渲染、点位点亮（已建联发光 / 重点外圈）、销售拜访足迹时序串联、按城市 / 区县 / 赛道过滤点位、一键生成就近拜访路线并估算里程。</td><td><span class="t g">已交付</span></td></tr>
+    <tr><td>3</td><td>客户管理「添加客户」</td><td>功能统一命名"添加客户"；16 个固定表单字段（见 §4）；客户名称、公司地址、法人/联系人、法人电话为<b>双重必填</b>（前端 + 后端校验）。</td><td><span class="t g">已交付</span></td></tr>
+    <tr><td>4</td><td>智能回填</td><td>输入客户名称后，后端自动调用探迹 / 天眼查 / 爱企查三接口回填企业基础信息（<code>GET /api/enrich?name=</code>），无需手动录入。</td><td><span class="t g">已交付</span> 模拟回填；真实待密钥</td></tr>
+    <tr><td>5</td><td>建联规范</td><td>建联情况仅固定两个枚举值：<b>已建联 / 未建联</b>，前后端均不得扩展。</td><td><span class="t g">已交付</span></td></tr>
+    <tr><td>6</td><td>AI 价值分析</td><td>基于客户全量表单数据自动输出价值等级（高/中/低）、核心业务机会、潜在合作风险；目标规范将 <code>value_level</code> 持久化入库（当前版本实时计算展示，入库写入列入迭代）。</td><td><span class="t a">已交付·待持久化</span></td></tr>
+    <tr><td>7</td><td>数据导出</td><td>支持按所有表单字段筛选，一键导出标准化 Excel；导出字段与添加客户表单完全对齐（SheetJS 本地化，无 CDN 依赖）。</td><td><span class="t g">已交付</span></td></tr>
+  </table>
+</section>
+
+<section id="s3">
+  <h2><span class="no">03</span>技术架构交接说明</h2>
+  <h3>三层架构与请求边界</h3>
+<pre>前端静态页（GitHub Pages / QW Pages）
+   │  仅调用同源 /api/*（Bearer Token）
+   ▼
+后端中转服务 server/（Node ≥18，零依赖内置模块）
+   │  密钥托管 · 第三方代理 · 鉴权 · 批量写入
+   ├─▶ 探迹开放平台（TUNJIE_APP_KEY/SECRET，仅环境变量）
+   ├─▶ 天眼查 / 爱企查（动态补全，仅环境变量）
+   └─▶ Neon Serverless PostgreSQL（DATABASE_URL / neon-config.js）</pre>
+  <h3>仓库结构</h3>
+  <table>
+    <tr><th>路径</th><th>职责</th></tr>
+    <tr><td><code>index.html</code></td><td>前端单文件应用（地图 / 看板 / 表单 / 登录权限 / 导出），全部库本地 vendor</td></tr>
+    <tr><td><code>data.js</code></td><td>前端配置 + 本地示例数据（地市 / 区县 / 51 赛道字典）</td></tr>
+    <tr><td><code>server/server.js</code></td><td>零依赖中转服务：静态托管 + 认证 + 业务 API + Neon/Supabase/内存三态存储</td></tr>
+    <tr><td><code>server/schema.sql</code></td><td>Neon 建表脚本（leads / users / 索引），服务启动亦幂等自建</td></tr>
+    <tr><td><code>server/.env.example</code></td><td>环境变量模板；真实 <code>.env</code> 与 <code>neon-config.js</code> 已被 .gitignore 排除</td></tr>
+    <tr><td><code>vendor/</code></td><td>Leaflet / ECharts / SheetJS / leaflet-heat 本地化，规避国内 CDN 不稳定</td></tr>
+    <tr><td><code>docs/</code></td><td>交接文档（本文件）</td></tr>
+  </table>
+  <h3>API 清单与权限</h3>
+  <table>
+    <tr><th>接口</th><th>方法</th><th>权限</th><th>说明</th></tr>
+    <tr><td><code>/api/health</code></td><td>GET</td><td>公开</td><td>健康检查 + 存储类型，前端据此切换在线/模拟模式</td></tr>
+    <tr><td><code>/api/auth/register</code> / <code>login</code></td><td>POST</td><td>公开</td><td>注册（首用户自动 admin）/ 登录，返回 Bearer Token</td></tr>
+    <tr><td><code>/api/auth/me</code> / <code>password</code></td><td>GET/POST</td><td>登录</td><td>会话自检 / 修改密码（原密码校验 + scrypt 重加盐）</td></tr>
+    <tr><td><code>/api/auth/users</code> / <code>role</code> / <code>delete</code></td><td>GET/POST</td><td>管理员</td><td>用户管理（不可操作自己）</td></tr>
+    <tr><td><code>/api/customers</code></td><td>GET/POST</td><td>登录</td><td>客户读取 / 添加（后端四重必填校验）</td></tr>
+    <tr><td><code>/api/customers?id=</code></td><td>DELETE</td><td>管理员</td><td>删除客户</td></tr>
+    <tr><td><code>/api/tunjie?region=&track=</code></td><td>GET</td><td>管理员</td><td>探迹双维挖掘 → 批量写库 → 返回写入条数</td></tr>
+    <tr><td><code>/api/enrich?name=</code></td><td>GET</td><td>登录</td><td>三接口智能回填</td></tr>
+  </table>
+  <h3>认证与权限模型</h3>
+  <ul>
+    <li>密码：<code>scrypt + 随机盐</code> 哈希存储；会话为服务端内存 Token（<code>crypto.randomBytes</code>）。</li>
+    <li>角色：<b>管理员</b>（探迹挖掘 / Excel 导出 / 删除客户 / 用户管理）；<b>普通用户</b>（查看 / 筛选 / 添加客户 / 路线 / 价值分析）。前端隐藏 + 后端 401/403 双重拦截。</li>
+  </ul>
+  <h3>Neon 连接协议（零依赖关键）</h3>
+<pre>POST https://&lt;连接串host&gt;/sql
+Headers: Neon-Connection-String: &lt;完整连接串&gt;
+Body:    { "query": "SELECT …", "params": [ … ] }
+Return:  { rows, rowCount, command }</pre>
+  <p class="muted">存储优先级：<code>SUPABASE_URL+ANON_KEY</code>（平台注入）→ <code>DATABASE_URL</code> → <code>neon-config.js</code> → 内存。启动时 <code>ensureSchema()</code> 幂等建表。</p>
+  <h3>部署方式</h3>
+  <ul>
+    <li><b>自托管（推荐，真实模式）</b>：任意 Node ≥18 主机，<code>node server.js</code>（零依赖无需 npm install），前端 <code>relayUrl</code> 指向该地址或整目录托管。</li>
+    <li><b>GitHub Pages</b>：静态托管，<code>git push</code> 自动构建；无后端时为模拟模式。</li>
+    <li><b>QW Pages</b>：静态镜像；动态+平台数据库需订阅支持（当前订阅不含 Pages 数据库功能）。</li>
+  </ul>
+  <h3>网络与运维坑位</h3>
+  <ul>
+    <li>Clash Verge TUN 模式将流量路由虚拟 IP，阻断 Neon / Supabase 等海外端点（ECONNRESET / 超时）；需对 <code>*.neon.tech</code>、<code>*.supabase.co</code> 加 DIRECT 或换节点。</li>
+    <li>国内 jsdelivr 不可达、cdnjs 大文件易截断；前端库一律 vendor，下载源用 npmmirror，下载后必须校验文件完整性。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="no">04</span>数据字典与字段规范</h2>
+  <h3>客户表单 16 字段（添加客户 / 导出对齐）</h3>
+  <table>
+    <tr><th>键</th><th>中文名</th><th>类型</th><th>必填</th><th>枚举 / 说明</th></tr>
+    <tr><td><code>name</code></td><td>客户名称</td><td>text</td><td><span class="t r">双重必填</span></td><td>公司全称</td></tr>
+    <tr><td><code>keyAccount</code></td><td>是否重点</td><td>enum</td><td>—</td><td>是 / 否</td></tr>
+    <tr><td><code>industry</code></td><td>赛道标签</td><td>enum</td><td>—</td><td>51 赛道（见下）</td></tr>
+    <tr><td><code>website</code></td><td>公司网站</td><td>text</td><td>—</td><td>https://</td></tr>
+    <tr><td><code>address</code></td><td>公司地址</td><td>text</td><td><span class="t r">双重必填</span></td><td>用于拜访与坐标解析</td></tr>
+    <tr><td><code>contact</code></td><td>法人/联系人</td><td>text</td><td><span class="t r">双重必填</span></td><td>—</td></tr>
+    <tr><td><code>phone</code></td><td>法人电话</td><td>text</td><td><span class="t r">双重必填</span></td><td>座机或手机</td></tr>
+    <tr><td><code>otherContacts</code></td><td>其他关键人联系方式</td><td>text</td><td>—</td><td>—</td></tr>
+    <tr><td><code>contacted</code></td><td>建联情况</td><td>enum</td><td>—</td><td><b>仅</b> 已建联 / 未建联</td></tr>
+    <tr><td><code>pcCount</code></td><td>公司PC人数</td><td>int</td><td>—</td><td>≥0</td></tr>
+    <tr><td><code>rdCount</code></td><td>研发人数</td><td>int</td><td>—</td><td>≥0</td></tr>
+    <tr><td><code>accessMode</code></td><td>接入方式</td><td>text</td><td>—</td><td>API / SDK / 私有化部署 / 云平台 / 未定</td></tr>
+    <tr><td><code>monthlySpend</code></td><td>月消费（万）</td><td>float</td><td>—</td><td>≥0</td></tr>
+    <tr><td><code>models</code></td><td>模型种类</td><td>text</td><td>—</td><td>如 通义/DeepSeek</td></tr>
+    <tr><td><code>tools</code></td><td>使用工具</td><td>text</td><td>—</td><td>如 Cursor/Dify</td></tr>
+    <tr><td><code>registered</code></td><td>是否注册账号</td><td>enum</td><td>—</td><td>是 / 否</td></tr>
+  </table>
+  <p class="muted">地理与坐标字段（系统维护）：<code>region</code> 地市、<code>district</code> 区县、<code>lat/lng</code> 经纬度——所有客户地图数据必须解析经纬度并落库，保存时按地市中心自动赋坐标，可地图选点精调。</p>
+  <h3>51 赛道清单</h3>
+  <div class="tagrow">
+    <span class="t a">电商平台</span><span class="t a">通用Agent</span><span class="t a">金融Agent</span><span class="t a">法律Agent</span><span class="t a">财务Agent</span><span class="t a">健康咨询Agent</span><span class="t a">游戏制作</span><span class="t a">AI游戏陪玩</span><span class="t a">在线教育工具</span><span class="t a">社交媒体</span><span class="t a">社交陪伴</span><span class="t a">视图生产</span><span class="t a">短漫剧制作</span><span class="t a">音频生产</span><span class="t a">写作</span><span class="t a">搜索</span><span class="t a">财务服务</span><span class="t a">电商服务</span><span class="t a">广告营销</span><span class="t a">AI Coding</span><span class="t a">AI科研</span><span class="t a">医疗健康</span><span class="t a">生物识别</span><span class="t a">AI内容安全检测</span><span class="t a">舆情风险监测</span><span class="t a">智能客服</span><span class="t a">企业查询服务</span><span class="t a">数据服务</span><span class="t a">招聘服务</span><span class="t a">招投标服务</span><span class="t a">智能运维</span><span class="t a">AI办公</span><span class="t a">CRM服务</span><span class="t a">多模型API聚合平台</span><span class="t a">MLOps与大模型运维平台</span><span class="t a">RAG 引擎/平台</span><span class="t a">基础大模型厂商</span><span class="t a">开源模型与工具分发平台</span><span class="t a">AI Agent开发平台</span><span class="t a">标注商</span><span class="t a">AI解决方案商</span><span class="t a">具身智能</span><span class="t a">智能座舱</span><span class="t a">自动驾驶</span><span class="t a">智能家电</span><span class="t a">智能手机</span><span class="t a">AI教育</span><span class="t a">AI玩具</span><span class="t a">AI可穿戴设备</span><span class="t a">AI芯片与模组</span><span class="t a">IPCamera</span>
+  </div>
+  <h3>核心数据表（目标规范）</h3>
+  <table>
+    <tr><th>表</th><th>职责</th><th>核心字段</th></tr>
+    <tr><td><code>track</code></td><td>赛道表</td><td>id, code, name, category, created_at（51 行种子）</td></tr>
+    <tr><td><code>hubei_city</code></td><td>湖北地市表</td><td>id, city_name, district_name, center_lat, center_lng（17 地市 + 区县中心坐标）</td></tr>
+    <tr><td><code>customer</code></td><td>客户主表</td><td>id, name, is_key, track_id, website, address, legal_person, legal_phone, other_contacts, contacted, pc_count, rd_count, access_mode, monthly_spend, model_types, tools_used, is_registered, city, district, lat, lng, <b>value_level</b>, dynamics, source, created_by, created_at；UNIQUE(name, city)</td></tr>
+    <tr><td><code>sales_footprint</code></td><td>销售足迹表</td><td>id, customer_id, visit_date, visit_type, note, operator, created_at（足迹时序串联数据源）</td></tr>
+  </table>
+  <h3>当前实现 → 目标规范映射（迁移指引）</h3>
+  <p class="muted">当前已部署版本使用宽表 <code>leads</code>（含全部表单字段 + lat/lng + district）与 <code>users</code>（认证）。接手方按目标规范拆表时，映射关系：<code>leads.industry→track.name</code>、<code>leads.region/district→hubei_city</code>、<code>leads→customer</code>（contact→legal_person、phone→legal_phone、keyAccount→is_key…）、足迹由 <code>visits jsonb</code> 展开为 <code>sales_footprint</code> 行。迁移 DDL 与拆表 SQL 见仓库 <code>server/schema.sql</code> 附录，务必在临时分支验证后执行。</p>
+</section>
+
+<section id="s5">
+  <h2><span class="no">05</span>项目开发约束规范</h2>
+  <ol class="body">
+    <li><b>密钥后端唯一</b>：探迹 / 天眼查 / 爱企查的 API 密钥、令牌仅存放后端环境变量（<code>.env</code>），禁止暴露前端、禁止存入数据库、禁止提交 git。</li>
+    <li><b>第三方请求后端代理</b>：所有第三方网络请求必须经 <code>server/</code> 中转，禁止前端直接发起；前端只持有 <code>relayUrl</code> 一个地址。</li>
+    <li><b>坐标强制落库</b>：所有客户必须解析经纬度并入库，保障点位点亮与足迹串联；缺失坐标的客户在列表标红提示。</li>
+    <li><b>双重必填校验</b>：客户名称 / 公司地址 / 法人联系人 / 法人电话，前端与后端同时校验，任一侧不得放宽。</li>
+    <li><b>命名与枚举冻结</b>：客户录入功能统一命名"添加客户"；建联情况仅 已建联/未建联；是否重点/是否注册仅 是/否。</li>
+    <li><b>零依赖约束</b>：后端仅用 Node 内置模块；前端库全部 vendor；新增依赖需评估国内可达性并本地化。</li>
+    <li><b>权限变更管控</b>：角色调整 / 用户删除仅管理员可操作且不可作用于自身；接口层 401/403 强制拦截。</li>
+    <li><b>发布流程</b>：改动经 <code>git push</code> 触发 GitHub Pages 自动构建；密钥文件已在 .gitignore，提交前检查 <code>git status</code>。</li>
+  </ol>
+</section>
+
+<section id="s6">
+  <h2><span class="no">06</span>待实现迭代清单</h2>
+  <table>
+    <tr><th style="width:8%">优先</th><th style="width:32%">事项</th><th>说明</th></tr>
+    <tr><td><span class="t a">P1</span></td><td>价值分析模型精细化</td><td>评分权重可配置化（当前：月消费 40 / 研发 25 / PC 10 / 模型 9 / 重点 10 / 建联 5 / 注册 5），引入行业系数后回写 <code>customer.value_level</code> 持久化。</td></tr>
+    <tr><td><span class="t a">P2</span></td><td>Excel 自定义模板</td><td>导出支持字段自选、列序自定义、多 Sheet（客户 / 足迹 / 赛道汇总）模板保存与复用。</td></tr>
+    <tr><td><span class="t a">P3</span></td><td>跟进日志与商机流转</td><td>新增客户跟进日志、商机阶段（线索→触达→方案→商务→签约）流转管理，与 <code>sales_footprint</code> 打通。</td></tr>
+  </table>
+  <h3>接手运维 TODO</h3>
+  <ul>
+    <li>申请探迹 / 天眼查 / 爱企查正式密钥，填入部署机 <code>.env</code>（当前为模拟数据源）。</li>
+    <li>部署机网络确认：可直连 <code>*.neon.tech</code>；本地开发若用 Clash TUN 需加 DIRECT 规则。</li>
+    <li>按需执行 <code>leads → customer/track/hubei_city/sales_footprint</code> 拆表迁移。</li>
+  </ul>
+</section>
+
+<section id="s7">
+  <h2><span class="no">07</span>项目交付总结</h2>
+  <ul>
+    <li><b>已交付</b>：湖北全域作战地图（17 地市 + 区县下钻）、足迹点亮/串联/拜访路线、51 赛道双维获客、添加客户 16 字段表单（四重双重必填）、智能回填、AI 价值分析、Excel 对齐导出、登录注册与管理员权限、修改密码、用户管理、Neon 零依赖读写、夜战参谋部视觉体系。</li>
+    <li><b>已验证</b>：登录/注册/改密/权限差异、双维挖掘、自动回填、价值分析、Excel 导出、地图动态定位、GitHub Pages 构建、QW Pages 发布，均经浏览器实测通过。</li>
+    <li><b>已知限制</b>：真实探迹/天眼查/爱企查接口待密钥接入（当前模拟并标注）；价值等级持久化与拆表迁移列入迭代；QW Pages 动态+平台库受订阅限制。</li>
+    <li><b>接手入口</b>：仓库 <code>onelives/sales-battle-map</code> → 读 <code>docs/</code>（本文档）→ <code>server/.env.example</code> 填密钥 → <code>node server.js</code> 即进入真实模式。</li>
+  </ul>
+  <h3>交接签署</h3>
+  <table class="sign">
+    <tr><th style="width:20%">角色</th><th>姓名 / 账号</th><th>日期</th></tr>
+    <tr><td>移交方</td><td class="m">onelives（项目所有者）</td><td class="m">2026-08-16</td></tr>
+    <tr><td>开发接手</td><td class="m"></td><td class="m"></td></tr>
+    <tr><td>运维接手</td><td class="m"></td><td class="m"></td></tr>
+  </table>
+</section>
+
+</div>
+</body>
+</html>

@@ -430,7 +430,7 @@
     <input id="mAddress" type="text" placeholder="街道门牌号，用于上门拜访">
     <div class="select-row">
       <div><label>法人/联系人 <span class="req">*</span></label><input id="mContact" type="text" placeholder="如：王总"></div>
-      <div><label>法人电话</label><input id="mPhone" type="text" placeholder="座机或手机"></div>
+      <div><label>法人电话 <span class="req">*</span></label><input id="mPhone" type="text" placeholder="座机或手机"></div>
     </div>
     <label>其他关键人联系方式</label>
     <input id="mOtherContacts" type="text" placeholder="如：技术总监 刘工 138xxxx">
@@ -1316,6 +1316,7 @@
     if (!c.name) { toast('客户名称为必填', true); return; }
     if (!c.address) { toast('公司地址为必填', true); return; }
     if (!c.contact) { toast('法人/联系人为必填', true); return; }
+    if (!c.phone) { toast('法人电话为必填', true); return; }
     saveCustomer(c, function (ok, local) {
       document.getElementById('modalMask').classList.remove('show');
       if (!ok) { toast('保存失败', true); return; }
